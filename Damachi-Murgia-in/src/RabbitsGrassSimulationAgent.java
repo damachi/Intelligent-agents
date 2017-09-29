@@ -3,6 +3,8 @@ import uchicago.src.sim.gui.SimGraphics;
 import uchicago.src.sim.space.Object2DGrid;
 
 import java.awt.Color;
+import java.awt.Image;
+import java.awt.Toolkit;
 
 /**
  * Class that implements the simulation agent for the rabbits grass simulation.
@@ -22,6 +24,10 @@ public class RabbitsGrassSimulationAgent implements Drawable {
  
     private int ID;
 	private RabbitsGrassSimulationSpace rgSpace;
+	
+	
+	private static Image rabbitImage = Toolkit.getDefaultToolkit().createImage("rabbit.png");
+	private static Image rabbitImageDying = Toolkit.getDefaultToolkit().createImage("rabbitdying.png");
 	
     private static int IDNumber = 0;	
 	public RabbitsGrassSimulationAgent(int minLifespan, int maxLifespan) {
@@ -73,12 +79,17 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 
 	public void draw(SimGraphics arg0) {
 		// TODO Auto-generated method stub
-		
-		if(energy > 10 ) {
-			arg0.drawFastRoundRect(Color.green);
-		}else  {
-			arg0.drawFastRoundRect(Color.blue);
+
+		if(energy > 10) {
+			arg0.drawFastRect(Color.GRAY);
+			arg0.drawImageToFit(rabbitImage);
+		}else {
+			arg0.drawFastRect(Color.white);
+			arg0.drawImageToFit(rabbitImageDying);
 		}
+		
+		
+		
 		
 	}
 		

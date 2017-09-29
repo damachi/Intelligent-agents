@@ -46,28 +46,24 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	  private int agentMaxLifespan = AGENT_MAX_LIFESPAN;
 	  private int agentEnergyThreshold = AGENT_ENERGY_THRESHOLD;
 	  
-	  
+	  private int livingAgents;
 	  private Schedule schedule;
 	  
-	  private RabbitsGrassSimulationSpace rgSpace;  
-	  
+	  private RabbitsGrassSimulationSpace rgSpace;    
 	  private ArrayList<RabbitsGrassSimulationAgent> agentList;
 	  
-	  //creata a display surface which are basically windows
+	  //create a display surface which are basically windows
 	  private DisplaySurface displaySurf;
 	  
 	  private OpenSequenceGraph amountOfGrassInSpace;
+	  private OpenSequenceGraph amountOfRabbitsInSpace;
 	  
-	  class grassInSpace implements DataSource,Sequence{
+	  class grassInSpace implements DataSource,Sequence{	
 
-		
 		public double getSValue() {
-			// TODO Auto-generated method stub
-			
-			
+			// TODO Auto-generated method stub		
 			return (double)rgSpace.getTotalGrass();
 		}
-
 		
 		public Object execute() {
 			// TODO Auto-generated method stub
@@ -76,8 +72,22 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		  
 	  }
 	  
+	  class rabbitsInSpace implements DataSource,Sequence{
 
+		@Override
+		public double getSValue() {
+			// TODO Auto-generated method stub
+			return (double)livingAgents;
+		}
 
+		@Override
+		public Object execute() {
+			// TODO Auto-generated method stub
+			return new Double(getSValue());
+		}
+		  
+	  }
+	  
 	  public String getName(){
 	    return "Carry And Drop";
 	  }
@@ -102,16 +112,23 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 			  amountOfGrassInSpace.dispose();
 		  }
 		  
+		  if(amountOfRabbitsInSpace != null) {
+			  amountOfRabbitsInSpace.dispose();
+		  }
+		  
 		  amountOfGrassInSpace = null;
+		  amountOfRabbitsInSpace = null;
 	
 		  
 		  // we create the display surface object
 		  displaySurf = new DisplaySurface(this, "Rabbit grass Model Window 1");
 		  amountOfGrassInSpace = new OpenSequenceGraph("Amount of Grass in Space", this);
+		  amountOfRabbitsInSpace = new OpenSequenceGraph("Amount of Rabbit in Space",this);
 		  
 		  //Register displays 
 		  registerDisplaySurface("Rabbit grass Model Winodow 1", displaySurf);
 	  	  this.registerMediaProducer("Plot", amountOfGrassInSpace);
+	  	  this.registerMediaProducer("Plot", amountOfRabbitsInSpace);
 		  
 	  }
 
@@ -122,6 +139,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	    
 	    displaySurf.display();
 	    amountOfGrassInSpace.display();
+	    amountOfRabbitsInSpace.display();
 	  }
 
 	  public void buildModel(){
@@ -212,11 +230,14 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		class RabbitGrassCountLiving extends BasicAction {
 			public void execute() {
 				countLivingAgents();
+				
+				amountOfGrassInSpace.step();
+				amountOfRabbitsInSpace.step();
 			}
 
 			private int countLivingAgents() {
 				// TODO Auto-generated method stub
-				int livingAgents = 0;
+			    livingAgents = 0;
 				for(int i = 0; i < agentList.size();i++) {
 					RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
 					if(rga.getStepsToLive() > 0 ) {
@@ -232,7 +253,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	
 	}
 		
-		schedule.scheduleActionAtInterval(10, new RabbitGrassCountLiving());
+		schedule.scheduleActionAtInterval(1, new RabbitGrassCountLiving());
 		
 	
 	 class RabbitGrassUpdateGrassInSpace extends BasicAction{
@@ -242,7 +263,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		@Override
 		public void execute() {
 			// TODO Auto-generated method stub
-			amountOfGrassInSpace.step();
+
 			
 			rgSpace.spreadGrass(grassRate );
 		}
@@ -252,7 +273,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		
 
 	
-    schedule.scheduleActionAtInterval(10, new RabbitGrassUpdateGrassInSpace());
+    schedule.scheduleActionAtInterval(20, new RabbitGrassUpdateGrassInSpace());
 	
 	}
 
@@ -278,6 +299,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		  displaySurf.addDisplayableProbeable(displayAgents, "Agents");
 		  
 		  amountOfGrassInSpace.addSequence("Grass in Space", new grassInSpace());
+		  amountOfRabbitsInSpace.addSequence("rabbits in space", new rabbitsInSpace());
 	  }
 
 	  public Schedule getSchedule(){

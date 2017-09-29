@@ -17,7 +17,9 @@ private Object2DGrid agentSpace;
 		
 		for (int i = 0; i < xSize; i++) {
 			for (int j = 0; j < ySize ; j++) {
+				
 				grassSpace.putObjectAt(i, j, new Integer(0));
+			
 			}
 			
 		}
@@ -105,10 +107,10 @@ private Object2DGrid agentSpace;
 
 	public int takeGrassAt(int x, int y) {
 		// TODO Auto-generated method stub
-	    int money = getGrassAt(x, y);
+	    int  grass = getGrassAt(x, y);
 	    grassSpace.putObjectAt(x, y, new Integer(0));
 	    
-	    return money;
+	    return grass;
 	}
 
 	public boolean moveAgentAt(int x, int y, int newX, int newY) {
@@ -156,4 +158,7 @@ private Object2DGrid agentSpace;
 		return totalGrass;
 	}
 
-}
+
+	}
+
+
