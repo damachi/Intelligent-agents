@@ -38,6 +38,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	  private static final int AGENT_MAX_LIFESPAN = 50;
 	  private static final int AGENT_ENERGY_THRESHOLD = 100;
 	  
+	  private static final int GRASS_RATE = 10;
+	  
 	  private int numAgents  =  NUMAGENTS;
 	  private int worldXSize = WORLDXSIZE;
 	  private int worldYSize = WORLDYSIZE;
@@ -45,6 +47,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	  private int agentMinLifespan = AGENT_MIN_LIFESPAN;
 	  private int agentMaxLifespan = AGENT_MAX_LIFESPAN;
 	  private int agentEnergyThreshold = AGENT_ENERGY_THRESHOLD;
+	  
+	  private int grassRate = GRASS_RATE;
 	  
 	  private int livingAgents;
 	  private Schedule schedule;
@@ -258,7 +262,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	
 	 class RabbitGrassUpdateGrassInSpace extends BasicAction{
 
-		private int grassRate = 10;
+		
 
 		@Override
 		public void execute() {
@@ -307,7 +311,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	  }
 
 	  public String[] getInitParam(){
-	    String[] initParams = { "NumAgents" , "WorldXSize", "WorldYSize","grass","AgentMinLifespan","AgentMaxLifespan","AgentEnergyThreshold"};
+	    String[] initParams = { "NumAgents" , "WorldXSize", "WorldYSize","grass","AgentMinLifespan","AgentMaxLifespan","AgentEnergyThreshold","GrassRate"};
 	    return initParams;
 	  }
 
@@ -354,10 +358,21 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	   public int getAgentMaxLifespan() {
 			return agentMaxLifespan;
 	   }
+	   
+	   public int getGrassRate() {
+		   return grassRate;
+	   }
+	   public void setGrassRate(int  i) {
+		   
+		   grassRate = i;
+	   }
 
 	    public void setAgentMaxLifespan(int agentMaxLifespan) {
 			this.agentMaxLifespan = agentMaxLifespan;
-	    }
+	   }
+	    
+	    
+	    
 
 	  public static void main(String[] args) {
 	    SimInit init = new SimInit();
