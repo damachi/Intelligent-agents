@@ -10,6 +10,7 @@ public class RabbitsGrassSimulationSpace {
 private Object2DGrid grassSpace;
 private Object2DGrid agentSpace;
 
+private static int max_grass_in_cell = 20;
 
 	public RabbitsGrassSimulationSpace(int xSize, int ySize) {
 		this.grassSpace = new Object2DGrid(xSize, ySize);
@@ -37,10 +38,13 @@ private Object2DGrid agentSpace;
 		   //Get the value of the object at those coordinates 
 		    
 		    int currentGrass = getGrassAt(x, y);
+		    
+		    if(currentGrass < max_grass_in_cell) {
 		    //Replace the integer object with another on with the new value
 		    
 		    // this is done in order to increase the amount of grass
 		    grassSpace.putObjectAt(x, y, new Integer (currentGrass + 1));
+		    }
 		}
 	}
 	
