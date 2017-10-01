@@ -160,10 +160,10 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		  
 		  if(numAgents >= (worldXSize*worldYSize)) {
 				JOptionPane.showMessageDialog(null, "Initial number of rabbit is higher than the available space. The programme with a highest value possible such that it doens't exceed the space");
-				
+				numAgents = (worldXSize * worldYSize) -1;
 		   }
 		  
-		  numAgents = (worldXSize * worldYSize) -1;
+		  
 		  
 		  for(int i = 0 ; i < numAgents; i++) {
 			  addNewAgent();
@@ -218,7 +218,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		    			//we don't want the rabbit to reproduce if there isn't enough space on the grid
 		    			if(rga.getEnergy() >= agentEnergyThreshold && livingAgents <= worldXSize * worldYSize) {
 		    			   
-		    				System.out.println("living agents " + livingAgents + " grid size " + worldXSize * worldYSize);
+		    				
 		    				addNewAgent();
 		    				rga.reduceEnergyLevel();
 		    			}
