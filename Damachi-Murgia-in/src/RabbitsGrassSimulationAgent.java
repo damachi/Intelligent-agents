@@ -105,7 +105,7 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		newX = (newX + grid.getSizeX()) % grid.getSizeX();
 		newY = (newY + grid.getSizeY()) % grid.getSizeY();
 		
-		System.out.println("print vX :" +  vX + "print vY :" +vY);
+		
 		
 		//we check if the agent isn't dead
 	

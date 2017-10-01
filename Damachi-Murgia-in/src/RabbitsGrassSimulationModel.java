@@ -16,6 +16,8 @@ import uchicago.src.sim.util.SimUtilities;
 
 import java.awt.Color;
 import java.util.ArrayList;
+
+import javax.swing.JOptionPane;
 /**
  * Class that implements the simulation model for the rabbits grass
  * simulation.  This is the first class which needs to be setup in
@@ -33,6 +35,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	  private static final int WORLDXSIZE = 20;
 	  private static final int WORLDYSIZE = 20;
 	  private static final int TOTALGRASS = 1000;
+	  
+	  
 	  
 	  private static final int AGENT_MIN_LIFESPAN = 30;
 	  private static final int AGENT_MAX_LIFESPAN = 50;
@@ -152,8 +156,19 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		  rgSpace = new RabbitsGrassSimulationSpace(worldXSize, worldYSize);
 		  rgSpace.spreadGrass(grass);
 		  
+		  /* we don't want to the amount of agents to exceed the grid size*/
+		  
+		  if(numAgents >= (worldXSize*worldYSize)) {
+				JOptionPane.showMessageDialog(null, "Initial number of rabbit is higher than the available space. The programme with a highest value possible such that it doens't exceed the space");
+				
+		   }
+		  
+		  numAgents = (worldXSize * worldYSize) -1;
+		  
 		  for(int i = 0 ; i < numAgents; i++) {
 			  addNewAgent();
+			  
+			  
 		  }
 		  
 		  for(int i = 0 ; i< agentList.size();i++) {
@@ -200,8 +215,10 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		    
 		    		for (int i = 0; i < agentList.size();i++) {
 		    			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
-		    			if(rga.getEnergy() >= agentEnergyThreshold) {
+		    			//we don't want the rabbit to reproduce if there isn't enough space on the grid
+		    			if(rga.getEnergy() >= agentEnergyThreshold && livingAgents <= worldXSize * worldYSize) {
 		    			   
+		    				System.out.println("living agents " + livingAgents + " grid size " + worldXSize * worldYSize);
 		    				addNewAgent();
 		    				rga.reduceEnergyLevel();
 		    			}
