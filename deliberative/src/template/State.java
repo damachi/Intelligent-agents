@@ -99,6 +99,8 @@ public class State {
 		//check if we are in goal state first the algorithm BFS will determine if we are in a goal state or not */
 		
 		//We check the moves we are able to do given that we are in a state*/
+		
+	
         
 
 		//Check  if the deliver action is possible 	
@@ -187,71 +189,94 @@ public class State {
 		
 		//if we are carrying a task we we can move to deliver the task OR
 		//we can either move towards another task where we can pick it up if we have enough space.
-
-		 
-		if(carrying.size() > 0) {
-			//we move towards the delivery city of the task
-			
-			for(Task carrying : carrying) {
+    
+		// we check if a deliver task has been done 
+		if(succ.size()== 0) {
+			if(carrying.size() > 0) {
+				//we move towards the delivery city of the task
 				
-				//TODO CHECK IF SAME CITY as position
-				City carry = carrying.deliveryCity;
-				
-				List<City >cityPathtoAvailableTask = position.pathTo(carry);
-				
-				if(cityPathtoAvailableTask.size() > 0 ) {
-					City nextCityToMove = position.pathTo(carry).get(0);
+				for(Task carrying : carrying) {
 					
-					double cost = this.cost + (position.distanceTo(nextCityToMove))*vehicle.costPerKm();
-					Actionss action = Actionss.MOVE;
+					//TODO CHECK IF SAME CITY as position
+					City carry = carrying.deliveryCity;
 					
-					Plan p = buildNextPlan();
-					p.appendMove(nextCityToMove);
+					List<City >cityPathtoAvailableTask = position.pathTo(carry);
 					
-					State nextState = new State(totalTask,this.vehicle,nextCityToMove,cost,availableTask,this.carrying,action,p);	
-					nextState.capacity = this.capacity;
-					nextState.initialCity = this.initialCity;
-					succ.add(nextState);		
-				}
-			}
-			
-		}
-
-			//we move towards another task make attempt to carry another task
-			
-			for (int i = 0 ; i < availableTask.size();i++ ) {
-				
-				Task availableTask_ = availableTask.get(i);
-				
-				//Check if you have enough space in your car
-				if(capacity - availableTask_.weight >= 0) {
-					
-					List<City >cityPathtoAvailableTask = position.pathTo(availableTask_.pickupCity);
-		
-					if(cityPathtoAvailableTask.size() > 0) {
-					    City nextCityAvailableTask = cityPathtoAvailableTask.get(0);			
+					if(cityPathtoAvailableTask.size() > 0 ) {
+						City nextCityToMove = position.pathTo(carry).get(0);
 						
-					    double cost = this.cost + (position.distanceTo(nextCityAvailableTask)*vehicle.costPerKm());
-					    Actionss action = Actionss.MOVE;
+						double cost = this.cost + (position.distanceTo(nextCityToMove))*vehicle.costPerKm();
+						Actionss action = Actionss.MOVE;
 						
-					    Plan p = buildNextPlan();
-					    p.appendMove(nextCityAvailableTask);
-					    
-						State nextState = new State(totalTask,vehicle, nextCityAvailableTask, cost, availableTask, carrying, action,p);	
+						Plan p = buildNextPlan();
+						p.appendMove(nextCityToMove);
+						
+						State nextState = new State(totalTask,this.vehicle,nextCityToMove,cost,availableTask,this.carrying,action,p);	
 						nextState.capacity = this.capacity;
 						nextState.initialCity = this.initialCity;
-						succ.add(nextState);
-						
+						succ.add(nextState);		
+					}
 				}
 				
-				
-				}
 			}
+	
+				//we move towards another task make attempt to carry another task
+			
+				// there does not exist a task that i can pick up or deliver then I can move.
+			
+			 
+			    if(noTaskToCarryOrDeliver()) {
+		
+					for (int i = 0 ; i < availableTask.size();i++ ) {
+						
+						Task availableTask_ = availableTask.get(i);
+						
+						//Check if you have enough space in your car
+						if(capacity - availableTask_.weight >= 0) {
+							
+							List<City >cityPathtoAvailableTask = position.pathTo(availableTask_.pickupCity);
 				
+							if(cityPathtoAvailableTask.size() > 0) {
+							    City nextCityAvailableTask = cityPathtoAvailableTask.get(0);			
+								
+							    double cost = this.cost + (position.distanceTo(nextCityAvailableTask)*vehicle.costPerKm());
+							    Actionss action = Actionss.MOVE;
+								
+							    Plan p = buildNextPlan();
+							    p.appendMove(nextCityAvailableTask);
+							    
+								State nextState = new State(totalTask,vehicle, nextCityAvailableTask, cost, availableTask, carrying, action,p);	
+								nextState.capacity = this.capacity;
+								nextState.initialCity = this.initialCity;
+								succ.add(nextState);
+								
+							}	
+						}
+					}
+			    }
+			}	
 		return new ArrayList<State>(new HashSet<State>(succ));	
 	
 	}
 	
+	private boolean noTaskToCarryOrDeliver() {
+		// TODO Auto-generated method stub
+		for (Task task : availableTask) {
+			if(task.pickupCity.id == position.id) {
+				return false;
+			}
+		}
+		
+		for (Task task : carrying) {
+			if(task.deliveryCity.id == position.id) {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+
+
 	private Plan buildNextPlan() {
 		// TODO Auto-generated method stub
 		
@@ -284,17 +309,11 @@ public class State {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((action == null) ? 0 : action.hashCode());
 		result = prime * result + ((availableTask == null) ? 0 : availableTask.hashCode());
-		result = prime * result + capacity;
 		result = prime * result + ((carrying == null) ? 0 : carrying.hashCode());
-		long temp;
-		temp = Double.doubleToLongBits(cost);
-		result = prime * result + (int) (temp ^ (temp >>> 32));
 		result = prime * result + ((position == null) ? 0 : position.hashCode());
 		return result;
 	}
-	
 
 
 	@Override
@@ -303,24 +322,18 @@ public class State {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
+		if (!(obj instanceof State))
 			return false;
 		State other = (State) obj;
-		if (action != other.action)
-			return false;
 		if (availableTask == null) {
 			if (other.availableTask != null)
 				return false;
 		} else if (!availableTask.equals(other.availableTask))
 			return false;
-		if (capacity != other.capacity)
-			return false;
 		if (carrying == null) {
 			if (other.carrying != null)
 				return false;
 		} else if (!carrying.equals(other.carrying))
-			return false;
-		if (Double.doubleToLongBits(cost) != Double.doubleToLongBits(other.cost))
 			return false;
 		if (position == null) {
 			if (other.position != null)
@@ -331,7 +344,7 @@ public class State {
 	}
 
 
-
 }
+	
 	
 

@@ -114,13 +114,17 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			
 		//*************BFS********************************//
 		List<State> Q = new ArrayList<State>();
+		
+		List<State> explored = new ArrayList<State>();
 			
 		Q.add(initialState);
 
 		do {
 			
 			State n = Q.get(0);
+			explored.add(n);
 			Q.remove(0);
+			
 			//if n is a goal state, return n
 			//keep track of explored already
 			if(goalState(n)) {
@@ -129,8 +133,13 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 						
 			List<State> S = n.successor();
 			
+			//(Position: St-Gallen, Cost: 2650.0, Resulting action: Move, Capacity : 27)
 			for(State s : S) {
-				Q.add(s);
+				//we want to prevent to revisit states already explored 
+				//TODO perhaps check if the cost is less. for that State s.
+				if(!explored.contains(s)) {
+					Q.add(s);
+				}
 			}
 			
 		}while(Q.size() != 0);
@@ -146,7 +155,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		int available = n.availableTask.size();
 		
 		// a goal state is when we don't have anymore more tasks and all tasks are delivered
-		return numberOfDelivered == State.deliveredTasksssss_ && available == 0;
+		return n.carrying.size()== 0 && n.availableTask.size() == 0;
 		
 	}
 
