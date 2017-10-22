@@ -5,6 +5,7 @@ import logist.simulation.Vehicle;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -63,13 +64,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
-		
-		
-		
-		
-		
-		
-		 
 
 		// Compute the plan with the selected algorithm.
 		/*switch (algorithm) {
@@ -85,15 +79,94 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			throw new AssertionError("Should not happen.");
 		}	
 		*/	
-		return BFS(vehicle,tasks);
+		return ASTAR(vehicle,tasks);
+	}
+	
+	private Plan ASTAR(Vehicle vehicle, TaskSet tasks) {
+		
+		List<Task> availableTaskList = new ArrayList<Task>();
+		
+		System.out.println("Vehicle v : " +vehicle.getCurrentCity());
+		System.out.println("Vehicle v : " +vehicle.getCurrentTasks());
+		
+		Iterator<Task> it = tasks.iterator();
+		
+		while(it.hasNext()) {
+			availableTaskList.add(it.next());
+		}
+			
+		if(notstarted) {			
+			totalTasks = availableTaskList.size();
+			notstarted = false;
+		}
+		
+		Plan plan = new Plan (vehicle.getCurrentCity());
+		
+
+		
+		State initialState = new State(totalTasks,vehicle, vehicle.getCurrentCity(), 0, availableTaskList, carryingTaskList, Actionss.NOTHING,plan);	
+		initialState.capacity = vehicle.capacity();
+		initialState.initialCity = vehicle.getCurrentCity();
+		
+		//************ ASTAR*****************//
+		
+		List<State> Q = new ArrayList<State>();
+		List<State> explored = new ArrayList<State>();
+			
+		Q.add(initialState);
+		
+		do {
+			State n = Q.get(0);
+			Q.remove(0);
+			if(!explored.contains(n) || betterPath(explored, n) ) {
+				if(goalState(n)) {
+					return n.plan;
+				}
+				explored.add(n);
+				
+				List<State> S = n.successor();
+				
+				S.sort(new StateComparator<State>());
+				
+				//S.addAll(Q);			
+				//Merge part
+				S.sort(new StateComparator<State>());			
+				Q.addAll(S);
+				
+				Q.sort(new StateComparator<State>());
+			
+			}
+			
+		}while(!Q.isEmpty());
+		
+		
+		
+		return null;
 	}
 	
 	
+	private boolean betterPath(List <State> explored,State n) {
+		// TODO Auto-generated method stub
+
+	    for(State nPrime : explored) {
+	    		if(nPrime.equals(n)) { 
+	    			return n.heuristicValue < nPrime.heuristicValue;
+			}
+		}
+	    
+	    return false;
+	    			  
+
+	}
+
 	private Plan BFS(Vehicle vehicle,TaskSet tasks) {
 		
 		//SET UP THE TASK LIST AND INITIAL STATE
 		
 		List<Task> availableTaskList = new ArrayList<Task>();
+		
+		System.out.println("Vehilcle v : " +vehicle.getCurrentCity());
+		System.out.println(tasks);
 		
 		Iterator<Task> it = tasks.iterator();
 		
@@ -137,7 +210,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			for(State s : S) {
 				//we want to prevent to revisit states already explored 
 				//TODO perhaps check if the cost is less. for that State s.
-				if(!explored.contains(s)) {
+				if(toVisit(explored, s)) {
+					
 					Q.add(s);
 				}
 			}
@@ -146,6 +220,22 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		return null;
 	
+	}
+	
+	private boolean toVisit(List <State> explored, State s) {
+		
+		for(State states : explored) {
+			
+			//we only consider task in which the overall cost is less.
+			if(states.equals(s)) {
+			   if(states.cost < s.cost) {
+				   return false;  
+				 }			
+			}
+		}
+		
+		return true;
+		
 	}
 	
 	private boolean goalState(State n) {
@@ -203,6 +293,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			while(it.hasNext()) {	
 				carryingTaskList.add(it.next());
 			}		
+			
+			new ArrayList<Task>(new HashSet<Task>(carryingTaskList));
 		}
+		
 	}
 }

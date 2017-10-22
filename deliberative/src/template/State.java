@@ -55,7 +55,18 @@ public class State {
     
     Task task = null;
     
+    //which just approximates the future cost we had to deliver all tasks from that area.
     
+    //we define it by f(n) = g(n) + h(n)
+    
+    //where g(n) = the cost it takes to reach this state 
+    //where h(n) = an approximation of from this state to a the goal state
+    double heuristicValue  = 0.0;
+    
+    
+    
+    
+    //h(n) involes delivering all tasks and pickup up all available Tasks and deliverying them 
 	
 	
 	
@@ -71,6 +82,9 @@ public class State {
 		this.action = action;
 		this.totalTask = totalTask;
 		this.plan = plan;
+		
+	
+		
 		
 	
 	}
@@ -92,6 +106,9 @@ public class State {
 	/*
 	 * Returns a list of successors based on actions
 	 * */
+	/**
+	 * @return
+	 */
 	public List<State> successor(){
 		
 		List <State> succ = new ArrayList<State>();
@@ -133,7 +150,10 @@ public class State {
 				
 				    //TOD
 				    Plan plan = buildNextPlan();
+				    
+				    
 				    plan.appendDelivery(carry);
+				    
 				    
 				    State nextState = new State(totalTask,vehicle,position,cost,availableTask,carr,action,plan);
 				    
@@ -254,11 +274,44 @@ public class State {
 						}
 					}
 			    }
-			}	
+		}
+		
+		updateAllfn(succ);
 		return new ArrayList<State>(new HashSet<State>(succ));	
 	
 	}
 	
+	/**
+	 * Sets every states heuristic value
+	 * @param succ successors of the state
+	 * 
+	 */
+	private void updateAllfn(List<State> succ) {
+		// TODO Auto-generated method stub
+		//f(n) = g(n) + h(n)
+		
+		for(State state : succ) {
+			double hn = 0.0;
+			
+			//cost of delivering all the tasks 
+			for(Task carry : state.carrying) {
+				
+				hn = hn + state.position.distanceTo(carry.deliveryCity) * state.vehicle.costPerKm();
+			}
+			
+			//cost of picking all the available tasks and delivering them
+			for(Task avail : state.availableTask) {
+				hn = hn + state.position.distanceTo(avail.pickupCity) *state.vehicle.costPerKm();
+				hn = hn + avail.pickupCity.distanceTo(avail.deliveryCity) * state.vehicle.costPerKm();
+			}
+		
+			//f(n) = g(n) + h(n)
+		  state.heuristicValue = state.cost + hn;;
+		}
+		
+	}
+
+
 	private boolean noTaskToCarryOrDeliver() {
 		// TODO Auto-generated method stub
 		for (Task task : availableTask) {
@@ -342,6 +395,8 @@ public class State {
 			return false;
 		return true;
 	}
+	
+
 
 
 }
