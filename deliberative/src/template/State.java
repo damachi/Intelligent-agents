@@ -1,5 +1,8 @@
 package template;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import logist.task.Task;
 import logist.task.TaskSet;
 import logist.topology.Topology.City;
@@ -7,33 +10,72 @@ import logist.topology.Topology.City;
 public class State {
 	
 	private City position;	// Current position
+	private Truck truck;
+	private List<City> neighbors;
 	private TaskSet tasksAvailable;	// Available tasks at my position
 	private TaskSet tasksToDo;	// Tasks I am currently doing
-	private int capacity;	// actuall capacity of the vehicle
+	
+	private ArrayList<Movement> children;
+	private ArrayList<State> ancestors;
 	
 	
-	public State(City pos, TaskSet ta, TaskSet ttd, int cap) {
-		this.position = pos;
-		this.tasksAvailable = ta;
-		this.tasksToDo = ttd;
-		this.capacity = cap;
+	
+	public State(Truck truck, TaskSet tasks) {
+		
+		this.position = truck.getPosition();
+		this.truck = truck;
+		this.neighbors = position.neighbors();
+		this.tasksAvailable = tasks;
+		this.tasksToDo = truck.getTaskToDo();
+		
+	}
+	
+	public void findNextStates() {
+		
+	}
+	
+	// Find the capacity of the truck
+	public double findCapacityTruck(Truck truck) {
+		double cumulativeWeight = 0;
+		for(Task t: truck.getTaskToDo()) {
+			cumulativeWeight += t.weight;
+		}
+		return truck.getCap() - cumulativeWeight;
+	}
+	
+	// According to the task list and the current position of the truck,
+	// we check if our city correspond the pickup city for each tasks.
+	// If not, we just remove this task from the list
+	public TaskSet taskToPickup(City currentCity, TaskSet taskList, Truck truck) {
+		TaskSet availableNewTasks = taskList.clone();
+		double cap = findCapacityTruck(this.truck);
+		
+		for(Task t: taskList) {
+			if( (currentCity.id != t.pickupCity.id) || (t.weight > cap) ) {
+				availableNewTasks.remove(t);
+			}
+		}
+		return availableNewTasks;
+	}
+	
+	// According to the task list and our current position, if the delivery city of the task 
+	// is the same as our current position, we can deliver the task. So, if the id's are not the same,
+	// we remove the task from the list of task to deliver
+	public TaskSet taskToDeliver(City currentCity, TaskSet taskList) {
+		TaskSet possibleTaskToDeliver = taskList.clone();
+		for(Task t: taskList) {
+			if(t.deliveryCity.id != this.position.id) {
+				possibleTaskToDeliver.remove(t);
+			}
+		}
+		return possibleTaskToDeliver;
+		
 	}
 	
 	public City getPosition() {
 		return this.position;
 	}
 	
-	// Given a task we want to do, tells if we have enough capacity
-	public boolean canTakeTask(Task t) {
-		int remainingCapacity = this.capacity - t.weight;
-		return (remainingCapacity - t.weight) >= 0;
-	}
-	
-	// Given a set of tasks we want to do, tells if we have enough capacity
-	public boolean canTakeTasks(TaskSet ts) {
-		int remainingCapacity = this.capacity - ts.weightSum();
-		return (remainingCapacity - ts.weightSum()) >= 0;
-	}
 	
 	public TaskSet getTaskAvailable() {
 		return this.tasksAvailable;
@@ -42,13 +84,9 @@ public class State {
 	public TaskSet getTaskToDo() {
 		return this.tasksToDo;
 	}
-	
-	public int getCap() {
-		return this.capacity;
-	}
 
 	
-	/// ATTENTION: Checker si on peut utiliser la method TaskSet.equals(Object o) !!! Pas sur
+	/*/// ATTENTION: Checker si on peut utiliser la method TaskSet.equals(Object o) !!! Pas certain
 	public boolean equal(State s) {
 		boolean sameCity = false;
 		boolean sameTaskAv = false;
@@ -72,7 +110,7 @@ public class State {
 		}
 		
 		return (sameCity && sameTaskAv && sameTaskToDo && sameCap);
-	}
+	}*/
 	
 
 }
