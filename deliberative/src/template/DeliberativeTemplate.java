@@ -65,8 +65,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 
+		/*Plan plan;
 		// Compute the plan with the selected algorithm.
-		/*switch (algorithm) {
+		switch (algorithm) {
 		case ASTAR:
 			// ...
 			plan = naivePlan(vehicle, tasks);
@@ -78,16 +79,24 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		default:
 			throw new AssertionError("Should not happen.");
 		}	
-		*/	
+		
+			
+		return plan;
+		*/
+		
 		return ASTAR(vehicle,tasks);
 	}
 	
 	private Plan ASTAR(Vehicle vehicle, TaskSet tasks) {
 		
+		System.out.println("ASTAR plan");
+		long startTime = System.nanoTime();
+		
 		List<Task> availableTaskList = new ArrayList<Task>();
 		
-		System.out.println("Vehicle v : " +vehicle.getCurrentCity());
-		System.out.println("Vehicle v : " +vehicle.getCurrentTasks());
+		System.out.println("Vehilcle v  : " +vehicle.name() +" at " + vehicle.getCurrentCity() + "Plan or replan ");
+		System.out.println(tasks);
+		
 		
 		Iterator<Task> it = tasks.iterator();
 		
@@ -102,9 +111,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		Plan plan = new Plan (vehicle.getCurrentCity());
 		
-
+		Iterator<Task> it1 = vehicle.getCurrentTasks().iterator();
+		List<Task> currentTasks = new ArrayList<Task>();
+		while(it1.hasNext()) {
+		   currentTasks.add(it1.next());
+		}
 		
-		State initialState = new State(totalTasks,vehicle, vehicle.getCurrentCity(), 0, availableTaskList, carryingTaskList, Actionss.NOTHING,plan);	
+		
+		State initialState = new State(totalTasks,vehicle, vehicle.getCurrentCity(), 0, availableTaskList,currentTasks , Actionss.NOTHING,plan);	
 		initialState.capacity = vehicle.capacity();
 		initialState.initialCity = vehicle.getCurrentCity();
 		
@@ -120,6 +134,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			Q.remove(0);
 			if(!explored.contains(n) || betterPath(explored, n) ) {
 				if(goalState(n)) {
+					long endTime = System.nanoTime();
+					long duration = (endTime - startTime) / 1000000;
+					
+					System.out.println("duration: "+ duration);
 					return n.plan;
 				}
 				explored.add(n);
@@ -161,11 +179,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	private Plan BFS(Vehicle vehicle,TaskSet tasks) {
 		
+		System.out.println("BFS plan");
+		long startTime = System.nanoTime();
+		
 		//SET UP THE TASK LIST AND INITIAL STATE
 		
 		List<Task> availableTaskList = new ArrayList<Task>();
 		
-		System.out.println("Vehilcle v : " +vehicle.getCurrentCity());
+		System.out.println("Vehilcle v  : " +vehicle.name() +" at " + vehicle.getCurrentCity() + "Plan or replan ");
 		System.out.println(tasks);
 		
 		Iterator<Task> it = tasks.iterator();
@@ -201,6 +222,11 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			//if n is a goal state, return n
 			//keep track of explored already
 			if(goalState(n)) {
+				long endTime = System.nanoTime();
+				long duration = (endTime - startTime) / 1000000;
+				
+				System.out.println("duration: "+ duration);
+				
 				return n.plan;
 			}
 						
