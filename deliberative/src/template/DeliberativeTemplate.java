@@ -65,7 +65,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 
-		/*Plan plan;
+		Plan plan;
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
@@ -82,9 +82,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 			
 		return plan;
-		*/
-		
-		return ASTAR(vehicle,tasks);
 	}
 	
 	private Plan ASTAR(Vehicle vehicle, TaskSet tasks) {
@@ -156,6 +153,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			}
 			
 		}while(!Q.isEmpty());
+		
 		
 		
 		
