@@ -31,6 +31,17 @@ public class TaskObject {
 			weight = -task.weight;
 		}
 	}
+	//Copy constructor
+	public TaskObject(TaskObject task2) {
+		
+		this.task = task2.task;
+		this.id = task2.id;
+		this.action = task2.action;
+		this.time  = task2.time;
+		this.weight = task2.weight;
+				
+		
+	}
 	@Override
 	public String toString() {
 		return "(TaskId: " +id+ " Action :" +action+")"; 

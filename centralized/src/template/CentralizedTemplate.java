@@ -3,8 +3,10 @@ package template;
 //the list of imports
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import logist.LogistSettings;
 
@@ -86,6 +88,23 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		Solution A = selectInitialSolution(vehicles, tasks);
     
     		System.out.println(A);
+    		
+    		//TODO TEST DEEP COPY
+    		
+    		List<LinkedList<TaskObject>> t = copy(A.assignments);
+    		System.out.println(t);
+    		t.get(0).get(0).id = 7777;
+    		
+    		System.out.println(A);
+    		System.out.println(t);
+    		
+
+
+    		
+  
+    		//TODO TEST CHANGING VEHICLES
+    		
+    		
     	
     		return null;
     }
@@ -168,7 +187,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 
 	private Solution changingVehicle(Solution a_old, VehicleObject vi, VehicleObject vj, int i, int j) {
 		//we  create a copy
-		List<LinkedList<TaskObject>> A = new ArrayList<LinkedList<TaskObject>>(a_old.assignments) ;
+		List<LinkedList<TaskObject>> A = copy(a_old.assignments) ;
 		
 		LinkedList<TaskObject> carI = A.get(i);
 		LinkedList<TaskObject> carj = A.get(j);
@@ -192,28 +211,99 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	
 	}	
 	
-	 //TODO
-	private Solution changingTaskOrder(Solution a_old, int vi, int tIdx1, int tIdx2) {
-			// TODO Auto-generated method stub
-			
+	private List<LinkedList<TaskObject>> copy(List<LinkedList<TaskObject>> toClone){
+		
+		List<LinkedList<TaskObject>> list = new ArrayList<LinkedList<TaskObject>>();
+		
+		for(int i = 0 ; i< toClone.size() ; i++) {
+			list.add(copy(toClone.get(i)));
+		}
+		
+		return list;
 	}
 	
-	//TODO
+	 //TODO
+	private Solution changingTaskOrder(Solution a_old, int vi, int tIdx1, int tIdx2) {
+			
+		return null;
+	}
+	
+	//TODO TEST 
 	private Solution updateTime(List<LinkedList<TaskObject>> a, int i, int j) {
 		
-
+		//we create a copy, we don't want to modify A
+		List<LinkedList<TaskObject>> tasks = copy(a);
+		
+		LinkedList<TaskObject> taskI = tasks.get(i);
+		LinkedList<TaskObject> taskJ = tasks.get(j);
+		
+		tasks.set(i, update(taskI));
+		tasks.set(j, update(taskJ));
+		
+		return new Solution(tasks);
+	}
+	
+	private LinkedList<TaskObject> copy(LinkedList<TaskObject> toClone){
+		
+		LinkedList<TaskObject> cloned = new LinkedList<TaskObject>();
+		
+		for(TaskObject task : toClone) {
+			cloned.add(new TaskObject(task));
+		}
+		
+		return cloned;
+		
 	}
 
-	//TODO
+	private LinkedList<TaskObject> update(LinkedList<TaskObject> taskI) {
+		
+		int time = 0;
+		for(TaskObject task : taskI) {
+			task.time = time;
+			time++;
+		}
+		
+		return taskI;
+	}
+
+	//TESTED and works correctly
+	/**
+	 * @param carI which will be modified in the function. Therefore does a copy creation
+	 * @return
+	 */
 	private List<TaskObject> removePickUpAndDeliverTask(LinkedList<TaskObject> carI) {
 		
-		
+	  assert(carI!=null);
+	  
+	  TaskObject task = carI.getFirst();
+	  int id = task.id;
+	  
+	  List<TaskObject> taskRemoved = new ArrayList<TaskObject>();
+	  
+	  Iterator<TaskObject> it = carI.iterator();
+	  //we always move both pickup and delivery
+	  int removed = 2;
+	  while(it.hasNext()) {
+		 
+		  TaskObject taskToRemove = it.next();
+		  if(taskToRemove.id == id) {
+			  it.remove();
+			  taskRemoved.add(taskToRemove);
+			  removed--;
+			  if(removed == 0) {
+				  Collections.reverse(taskRemoved);
+				  return taskRemoved;
+				  
+			  }
+		  }
+	  }
+	  return null; 
 	}
 
     //TODO
     private Solution localChoice(List<Solution> n) {
 
-	
+    		return null;
 	}
 
     private Solution selectInitialSolution(List<Vehicle> vehicles, TaskSet t) {
@@ -230,6 +320,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     			totalTasks.add(new TaskObject(task, Action.PICKUP));
     			totalTasks.add(new TaskObject(task, Action.DELIVER));
     		}
+  		
     		//each vehicle has task list
     		List<LinkedList<TaskObject>> taskList = new ArrayList<LinkedList<TaskObject>>();
     		
