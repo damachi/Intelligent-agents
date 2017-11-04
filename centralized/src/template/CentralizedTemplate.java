@@ -3,9 +3,12 @@ package template;
 //the list of imports
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import logist.LogistSettings;
@@ -85,7 +88,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
         return plans;
         
         */
-    		Solution A = selectInitialSolution(vehicles, tasks);
+    		/*Solution A = selectInitialSolution(vehicles, tasks);
     
     		System.out.println(A);
     		
@@ -97,15 +100,26 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		
     		System.out.println(A);
     		System.out.println(t);
-    		
+    		*/
 
 
-    		
-  
-    		//TODO TEST CHANGING VEHICLES
-    		
+ 
+    		//TODO TEST CHANGE ORDER 
     		
     	
+    		//OK TEST hash map
+    	
+    		//TODO define f 
+    	
+    		//TODO implement LocalChoice
+    	
+    		//TODO test LocalChoice 
+    	
+    	
+    		
+    	
+    		SLS(vehicles, tasks);
+    	   
     		return null;
     }
     
@@ -115,7 +129,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		int iterations = 0; 
     		
     		Solution A = selectInitialSolution(vehicles, tasks);
-    		/*List<VehicleObject> cars = new ArrayList<VehicleObject>();
+    		List<VehicleObject> cars = new ArrayList<VehicleObject>();
     		
     		for(Vehicle v : vehicles) {
     			cars.add(new VehicleObject(v));
@@ -127,19 +141,10 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		  List<Solution> N = chooseNeighbours(A_old,cars);
     		  A =  localChoice(N);
     		}
-    		
-    		*/
-    		
-    		return A;
-    		
-    		
-
-    		
-    				
-    	
+    			
+    		return A;  	
     }
-    
-    
+      
     private List<Solution> chooseNeighbours(Solution a_old, List<VehicleObject> cars) {
 
     		List<Solution> N = new ArrayList<Solution>();
@@ -149,7 +154,9 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		List<TaskObject> tasksForVi  = new ArrayList<TaskObject>();
     		
     		do {
+    			randomCar = random.nextInt(cars.size());
     		 	tasksForVi = a_old.assignments.get(randomCar);
+    		 	
     		}while(tasksForVi.size()== 0);
     		
     		//----------Applying the change operator-----------------//
@@ -168,11 +175,13 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		//---------Applying the changing task order operator------//
     	    int length = a_old.assignments.get(randomCar).size();
     	    
+    	    Map<Integer, List<TaskObject>> map = buildHashMapForVi(a_old.assignments.get(randomCar));
+    	    
     	    if(length >= 2) {
 	    		for (int tIdx1 = 0; tIdx1 < length-1; tIdx1++) {
 	    			for(int tIdx2 = tIdx1+1; tIdx2 < length; tIdx2++) {
-	    				int vi = randomCar;
-	    				Solution A = changingTaskOrder(a_old,vi ,tIdx1,tIdx2);
+	    				int carIndex = randomCar;
+	    				Solution A = changingTaskOrder(a_old,carIndex ,tIdx1,tIdx2,cars.get(carIndex).capacity,map);
 	    				
 	    				if(A != null) {
 	    					N.add(A);
@@ -184,6 +193,21 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	}
     
    
+    //TODO TEST
+	private Map<Integer, List<TaskObject>> buildHashMapForVi(LinkedList<TaskObject> taskList) {
+		
+		
+		Map<Integer,List<TaskObject>> taskMap = new HashMap<Integer, List<TaskObject>>();
+		
+		for(TaskObject task : taskList) {
+			List<TaskObject> list = taskMap.getOrDefault(task.id, new ArrayList<TaskObject>());
+			list.add(task);
+			taskMap.put(task.id, list);
+				
+		}
+		
+		return taskMap;
+	}
 
 	private Solution changingVehicle(Solution a_old, VehicleObject vi, VehicleObject vj, int i, int j) {
 		//we  create a copy
@@ -222,12 +246,56 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		return list;
 	}
 	
-	 //TODO
-	private Solution changingTaskOrder(Solution a_old, int vi, int tIdx1, int tIdx2) {
+	 //TODO TEST
+	private Solution changingTaskOrder(Solution a_old, int carIndex, int tIdx1, int tIdx2, int carTotalCapacity,Map<Integer,List<TaskObject>> map) {
+		
+		//we create a copy because we don't want to alter A_old outside of this method
+		List<LinkedList<TaskObject>> tasksList = copy(a_old.assignments);
+		
+		//we retrieve the tasklist of that specific car
+		LinkedList<TaskObject> tasks = tasksList.get(carIndex);
+		
+		TaskObject t1 = tasks.get(tIdx1);
+		TaskObject t2 = tasks.get(tIdx2);
+		//we can't only swap if both tasks have different ID's. Meaning they aren't the same
+		if(t1.id != t2.id) {
+			int time1 = t1.time;
+			int time2 = t2.time;
 			
-		return null;
+			if(check(t1,time2,map) && check(t2,time1,map)) {
+				
+				Collections.swap(tasks, tIdx1, tIdx2);
+			    if(goodCapacityPerVehicle(carTotalCapacity, tasks)) {
+			    		//update the times
+			    	 	update(tasks);
+			    		return new Solution(tasksList);
+			    }else {
+			    		//TESTED CASE
+			    		return null;
+			    }			
+			}else {
+				//TESTED CASE
+				return null;
+			}
+		}else {
+			//TESTED CASE
+			return null;
+		}
 	}
 	
+	private boolean check(TaskObject t1, int time2, Map<Integer,List<TaskObject>> map) {
+		
+	  if(t1.action == Action.PICKUP) {
+		  int deliverTime = map.get(t1.id).get(1).time;
+		  return time2 < deliverTime ;
+
+	  }else {
+		  //Action.deliver
+		  int pickupTime = map.get(t1.id).get(0).time;
+		  return pickupTime < time2;	  
+	  }
+	}
+
 	//TODO TEST 
 	private Solution updateTime(List<LinkedList<TaskObject>> a, int i, int j) {
 		
@@ -254,7 +322,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		return cloned;
 		
 	}
-
+	//TESTED THOUGHROULY NOT NEED FOR BREAKPOINTS
 	private LinkedList<TaskObject> update(LinkedList<TaskObject> taskI) {
 		
 		int time = 0;
@@ -266,7 +334,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		return taskI;
 	}
 
-	//TESTED and works correctly
+	
 	/**
 	 * @param carI which will be modified in the function. Therefore does a copy creation
 	 * @return
@@ -424,7 +492,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		
 	    int capacity = totalCapacityOfVehicle;
 	    for (TaskObject task : tasks) {
-	    		capacity = capacity + task.weight;
+	    		capacity = capacity - task.weight;
 	    		if(capacity < 0) {
 	    			return false;
 	    		}
