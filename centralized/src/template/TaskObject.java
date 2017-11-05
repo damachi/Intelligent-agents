@@ -1,6 +1,7 @@
 package template;
 
 import logist.task.Task;
+import logist.topology.Topology.City;
 
 
 
@@ -11,7 +12,7 @@ public class TaskObject {
 	Action action;
 	int time;
 	int weight;
-	
+	City city;
 	boolean assigned = false;
 	
 	
@@ -27,8 +28,10 @@ public class TaskObject {
 		this.action = action;
 		if(action==Action.PICKUP) {
 			weight = task.weight;
+			city = task.pickupCity;
 		}else {
 			weight = -task.weight;
+			city = task.deliveryCity;
 		}
 	}
 	//Copy constructor
@@ -39,6 +42,7 @@ public class TaskObject {
 		this.action = task2.action;
 		this.time  = task2.time;
 		this.weight = task2.weight;
+		this.city = task2.city;
 				
 		
 	}

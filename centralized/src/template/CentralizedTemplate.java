@@ -3,6 +3,7 @@ package template;
 //the list of imports
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,7 +40,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     private Agent agent;
     private long timeout_setup;
     private long timeout_plan;
-    
+	private int SEED = 0;
     private int iterations_MAX = 1000;
     
     @Override
@@ -63,74 +64,92 @@ public class CentralizedTemplate implements CentralizedBehavior {
         this.topology = topology;
         this.distribution = distribution;
         this.agent = agent;
+        
     }
 
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
-    /*    long time_start = System.currentTimeMillis();
-        
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-        Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
 
-        List<Plan> plans = new ArrayList<Plan>();
-        plans.add(planVehicle1);
-        
-        //you have generate a list of plans for all the vehicles in the same order
-        while (plans.size() < vehicles.size()) {
-            plans.add(Plan.EMPTY);
-        }
-        
-        
-        long time_end = System.currentTimeMillis();
-        long duration = time_end - time_start;
-        System.out.println("The plan was generated in "+duration+" milliseconds.");
-        
-        return plans;
-        
-        */
-    		/*Solution A = selectInitialSolution(vehicles, tasks);
-    
-    		System.out.println(A);
-    		
-    		//TODO TEST DEEP COPY
-    		
-    		List<LinkedList<TaskObject>> t = copy(A.assignments);
-    		System.out.println(t);
-    		t.get(0).get(0).id = 7777;
-    		
-    		System.out.println(A);
-    		System.out.println(t);
-    		*/
-
-
+    		//TODO for initial solution if a task doesn't fit in anyof the cars
  
-    		//TODO TEST CHANGE ORDER 
-    		
+    		//OK TEST CHANGE ORDER 
+    		 
+    		//OK TEST DEEP COPY
     	
     		//OK TEST hash map
     	
-    		//TODO define f 
+    		//OK TEST define cost
+
+    		//OK implement LocalChoice
     	
-    		//TODO implement LocalChoice
+    		//OK TEST LocalChoice
     	
-    		//TODO test LocalChoice 
-    	
-    	
-    		
-    	
-    		SLS(vehicles, tasks);
+
+    		long time_start = System.currentTimeMillis();
+  
+    		Solution solution = SLS(vehicles, tasks);
     	   
-    		return null;
+    		if(solution != null) {
+    			List<Plan> plan = new ArrayList<Plan>();
+    			
+    			for(int i = 0; i<  vehicles.size() ;i++) {
+    				Plan builtPlan = buildPlan(solution.assignments.get(i),vehicles.get(i));
+    				plan.add(builtPlan);
+    			}
+    		
+	    		long time_end = System.currentTimeMillis();
+	    		long duration = time_end - time_start;
+	    		System.out.println("The plan was generated in "+duration+" milliseconds.");	
+	    		
+	    		System.out.println(solution.companyCost);
+    		
+	    		return plan;
+    		}else {
+    			return null;
+    		}
     }
     
-    
-    private Solution SLS(List<Vehicle> vehicles, TaskSet tasks){
+     
+    private Plan buildPlan(LinkedList<TaskObject> linkedList, Vehicle vehicle) {
+		// TODO Auto-generated method stub
+		
+    		City currentCity = vehicle.getCurrentCity();
+    		Plan plan = new Plan(currentCity);
+    		
+    		for(int i = 0; i< linkedList.size();i++) {
+    			if(linkedList.get(i).action == Action.PICKUP) {
+    				//we first move to the pickup city
+    				for(City city :currentCity.pathTo(linkedList.get(i).city)) {
+    					plan.appendMove(city);
+    				}
+    				plan.appendPickup(linkedList.get(i).task);
+    				currentCity = linkedList.get(i).city;
+    				
+    			}else {
+    				//we move to the delivery city
+    				for(City city :currentCity.pathTo(linkedList.get(i).city)) {
+    					plan.appendMove(city);
+    				}
+    				plan.appendDelivery(linkedList.get(i).task);
+    				currentCity = linkedList.get(i).city;
+    					
+    			}
+    		}
+    		
+    		return plan;
+	}
+
+	private Solution SLS(List<Vehicle> vehicles, TaskSet tasks){
+    	
+    		double probability = 0.5;
 		
     		int iterations = 0; 
     		
-    		Solution A = selectInitialSolution(vehicles, tasks);
-    		List<VehicleObject> cars = new ArrayList<VehicleObject>();
+    	
     		
+    		Solution A = selectInitialSolution(vehicles, tasks,SEED);
+
+    		List<VehicleObject> cars = new ArrayList<VehicleObject>();
     		for(Vehicle v : vehicles) {
     			cars.add(new VehicleObject(v));
     		}
@@ -139,9 +158,11 @@ public class CentralizedTemplate implements CentralizedBehavior {
     		  Solution A_old = A;
     		  
     		  List<Solution> N = chooseNeighbours(A_old,cars);
-    		  A =  localChoice(N);
+    		  A =  localChoice(N,A_old, probability);
+    		  System.out.println(A.companyCost);
+    		  iterations++;
     		}
-    			
+    		
     		return A;  	
     }
       
@@ -167,6 +188,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     				
     				Solution  A = changingVehicle(a_old,vi,vj,randomCar,i);
     				if(A!=null) {
+    					A.companyCost = cost(A,cars);
     					N.add(A);
     				}
     			}
@@ -184,6 +206,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	    				Solution A = changingTaskOrder(a_old,carIndex ,tIdx1,tIdx2,cars.get(carIndex).capacity,map);
 	    				
 	    				if(A != null) {
+	    					A.companyCost = cost(A,cars);
 	    					N.add(A);
 	    				}
 	    			}  			
@@ -191,21 +214,17 @@ public class CentralizedTemplate implements CentralizedBehavior {
     	    }
     		return N;
 	}
-    
-   
+      
     //TODO TEST
 	private Map<Integer, List<TaskObject>> buildHashMapForVi(LinkedList<TaskObject> taskList) {
-		
-		
+			
 		Map<Integer,List<TaskObject>> taskMap = new HashMap<Integer, List<TaskObject>>();
 		
 		for(TaskObject task : taskList) {
 			List<TaskObject> list = taskMap.getOrDefault(task.id, new ArrayList<TaskObject>());
 			list.add(task);
-			taskMap.put(task.id, list);
-				
+			taskMap.put(task.id, list);			
 		}
-		
 		return taskMap;
 	}
 
@@ -226,13 +245,12 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		boolean loadGood = goodCapacityPerVehicle(vj.capacity, carj);
 		
 	    if(loadGood) {
-	    		Solution alteredSolution = updateTime(A,i,j); 		
+	    		Solution alteredSolution = updateTime(A,i,j);	    		
 	    		return alteredSolution;
 	    	  	
 	    }else {
 	    		return null;
 	    }
-	
 	}	
 	
 	private List<LinkedList<TaskObject>> copy(List<LinkedList<TaskObject>> toClone){
@@ -241,8 +259,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		
 		for(int i = 0 ; i< toClone.size() ; i++) {
 			list.add(copy(toClone.get(i)));
-		}
-		
+		}	
 		return list;
 	}
 	
@@ -333,8 +350,20 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		
 		return taskI;
 	}
-
 	
+	private int cost(Solution solution,List<VehicleObject> vehiclesList) {
+		
+		int totalCost = 0; 
+		
+		for(int i = 0 ; i < solution.assignments.size();i++) {
+			
+			totalCost+=computeCost(solution.assignments.get(i), vehiclesList.get(i));
+		}
+		return totalCost;
+	}
+	
+
+
 	/**
 	 * @param carI which will be modified in the function. Therefore does a copy creation
 	 * @return
@@ -369,20 +398,61 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	}
 
     //TODO
-    private Solution localChoice(List<Solution> n) {
+    private Solution localChoice(List<Solution> n,Solution a_old, double probablity ) {
+    		//we sort the list of solutions based on there cost
+    		
+    		Collections.sort(n, new Comparator<Solution>() {
+    				@Override
+				public int compare(Solution o1, Solution o2) {
 
-    		return null;
+					return Integer.compare(o1.companyCost, o2.companyCost);
+				}
+			});
+    		int minCost = n.get(0).companyCost;
+    		List<Solution> filtered = filter(minCost,n);
+    		
+    		Random random = new Random();
+    		int randomSolution = random.nextInt(filtered.size());
+    		
+    		Solution solution = filtered.get(randomSolution);
+    		
+    		double proba = random.nextDouble();
+    		
+    		if(probablity >= proba) {
+    			return solution;
+    		}else {
+    			return a_old;
+    		}
+    		
 	}
+    
+    private List<Solution> filter(int mininumCost, List<Solution> s){
+    		List<Solution> filteredSolution = new ArrayList<Solution>();
+    		int i = 0;
+    		int minimumCost = s.get(i).companyCost;
+    		  		
+    		while((i < s.size()) &&minimumCost == s.get(i).companyCost) {
+    			filteredSolution.add(s.get(i));
+    			i++;
+    		}
+    		
+    		
+    		return filteredSolution;
+    	
+    }
 
-    private Solution selectInitialSolution(List<Vehicle> vehicles, TaskSet t) {
+    private Solution selectInitialSolution(List<Vehicle> vehicles, TaskSet ti,int seed) {
     		//Initialize Vehicle Object list
     		List<VehicleObject> cars = new ArrayList<VehicleObject>();
     		List<TaskObject> totalTasks = new ArrayList<TaskObject>();
     	
+    		List<Task> t = new ArrayList<Task>();
     		
     		for(Vehicle v : vehicles) {
     			cars.add(new VehicleObject(v));
     		}
+    		t.addAll(ti);
+    		Collections.shuffle(t, new Random(seed));
     		
     		for(Task task : t) {
     			totalTasks.add(new TaskObject(task, Action.PICKUP));
@@ -396,11 +466,16 @@ public class CentralizedTemplate implements CentralizedBehavior {
     			taskList.add(new LinkedList<TaskObject>());
     		}
     		
-    		int i = 0;
-    		int car = 0;
+
     		
+    		int i = 0;
+    		Random rand = new Random();
+    		
+    		int car = 0;
+    		//int car = rand.nextInt(cars.size());
     		int time = 0;
     		int numberOfTasks = totalTasks.size();
+    		int carsFull = 0;
     		while(i < numberOfTasks) {
     			//it means we have space
     			if(totalTasks.get(i).task.weight <= cars.get(car).capacity) {
@@ -420,25 +495,31 @@ public class CentralizedTemplate implements CentralizedBehavior {
     				
     				taskList.get(car).add(taskPickup);
     				taskList.get(car).add(taskDeliver);
-    				
-    				//Don't need to update capacity of the car. Since we deliver immediatly
-    				//VehicleObject vehicle = cars.get(car);	
-    				//cars.set(car, vehicle);
-    				
+
     				i++;
-    	
+    			//	car = rand.nextInt(cars.size());
+    				//We just distribute the task equally amongst the cars*/
+    				if(car==cars.size()-1) {
+    					car = 0;
+    				}else {
+    					car++;
+    				}
+    				carsFull = 0;
     			}else {
-    				
     				car++;
+    				carsFull++;
     				//if we don't have anymore cars
-    				if(car == vehicles.size()) {
+    				if(carsFull == vehicles.size()) {
     					return null;
     				}   				
     			}
     		}
     		
     		if(checkConstraints(totalTasks,cars, taskList)) {	
-    			return new Solution(taskList);
+    			Solution solution = new Solution(taskList);
+    			solution.companyCost = cost(solution, cars);
+    			
+    			return solution;
     		}else {
     			throw new IllegalArgumentException();
     		}		
@@ -525,4 +606,24 @@ public class CentralizedTemplate implements CentralizedBehavior {
         }
         return plan;
     }
+	
+	//the cost is based on the distance traversed
+	private int computeCost(LinkedList<TaskObject> taskList, VehicleObject vehicleObject) {	
+		
+		City currentCity = vehicleObject.vehicle.getCurrentCity();
+		
+		int totalCost = 0;
+		for(int i = 0 ; i< taskList.size()-1 ; i++) {
+			//shortest cost from going from a point to a point
+			City c1 = taskList.get(i).city;
+			City c2 = taskList.get(i+1).city;
+			totalCost += (c1.distanceTo(c2)) * vehicleObject.vehicle.costPerKm();	
+		}
+		//cost of reaching the first pickup¨
+		if(!taskList.isEmpty()) {
+			totalCost +=currentCity.distanceTo(taskList.get(0).city) * vehicleObject.vehicle.costPerKm();
+		}
+		
+		return totalCost;	
+	}
 }

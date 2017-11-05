@@ -12,6 +12,8 @@ public class Solution {
 	
 	List<LinkedList<TaskObject>> assignments;
 	
+	int companyCost;
+	
 	public Solution(List<LinkedList<TaskObject>> assignments) {
 		this.assignments = assignments;
 	}
