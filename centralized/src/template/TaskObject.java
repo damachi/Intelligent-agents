@@ -43,8 +43,47 @@ public class TaskObject {
 		this.time  = task2.time;
 		this.weight = task2.weight;
 		this.city = task2.city;
+		this.assigned = task2.assigned;
 				
 		
+	}
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((action == null) ? 0 : action.hashCode());
+		result = prime * result + (assigned ? 1231 : 1237);
+		result = prime * result + ((city == null) ? 0 : city.hashCode());
+		result = prime * result + id;
+		result = prime * result + time;
+		result = prime * result + weight;
+		return result;
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof TaskObject))
+			return false;
+		TaskObject other = (TaskObject) obj;
+		if (action != other.action)
+			return false;
+		if (assigned != other.assigned)
+			return false;
+		if (city == null) {
+			if (other.city != null)
+				return false;
+		} else if (!city.equals(other.city))
+			return false;
+		if (id != other.id)
+			return false;
+		if (time != other.time)
+			return false;
+		if (weight != other.weight)
+			return false;
+		return true;
 	}
 	@Override
 	public String toString() {

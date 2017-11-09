@@ -1,5 +1,6 @@
 package template;
 
+import java.awt.image.FilteredImageSource;
 //the list of imports
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,6 +13,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.Set;
+
+import javax.swing.JOptionPane;
+
 import logist.LogistSettings;
 
 import logist.Measures;
@@ -41,7 +46,15 @@ public class CentralizedTemplate implements CentralizedBehavior {
     private long timeout_setup;
     private long timeout_plan;
 	private int SEED = 0;
-    private int iterations_MAX = 1000;
+    private int iterations_MAX = 10000;
+	private double probability = 0.35;
+	
+
+	
+	private Solution bestSolution;;
+	private List<Solution> s = new ArrayList<Solution>();
+	private int sameConvergence = 0;
+	private int convergenceRate = 40;
     
     @Override
     public void setup(Topology topology, TaskDistribution distribution,
@@ -60,7 +73,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
         timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
         // the plan method cannot execute more than timeout_plan milliseconds
         timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
-        
+         
         this.topology = topology;
         this.distribution = distribution;
         this.agent = agent;
@@ -69,26 +82,9 @@ public class CentralizedTemplate implements CentralizedBehavior {
 
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
-
-    		//TODO for initial solution if a task doesn't fit in anyof the cars
- 
-    		//OK TEST CHANGE ORDER 
-    		 
-    		//OK TEST DEEP COPY
     	
-    		//OK TEST hash map
-    	
-    		//OK TEST define cost
-
-    		//OK implement LocalChoice
-    	
-    		//OK TEST LocalChoice
-    	
-
-    		long time_start = System.currentTimeMillis();
-  
     		Solution solution = SLS(vehicles, tasks);
-    	   
+
     		if(solution != null) {
     			List<Plan> plan = new ArrayList<Plan>();
     			
@@ -97,11 +93,9 @@ public class CentralizedTemplate implements CentralizedBehavior {
     				plan.add(builtPlan);
     			}
     		
-	    		long time_end = System.currentTimeMillis();
-	    		long duration = time_end - time_start;
-	    		System.out.println("The plan was generated in "+duration+" milliseconds.");	
+
 	    		
-	    		System.out.println(solution.companyCost);
+	    		System.out.println("Cost of Generated plan " +solution.companyCost);
     		
 	    		return plan;
     		}else {
@@ -140,33 +134,60 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	}
 
 	private Solution SLS(List<Vehicle> vehicles, TaskSet tasks){
-    	
-    		double probability = 0.5;
-		
+    		
     		int iterations = 0; 
-    		
-    	
-    		
+   
     		Solution A = selectInitialSolution(vehicles, tasks,SEED);
-
+    		
+    		bestSolution = A;
+    	
     		List<VehicleObject> cars = new ArrayList<VehicleObject>();
     		for(Vehicle v : vehicles) {
     			cars.add(new VehicleObject(v));
     		}
-    	 		
-    		while(iterations  <  iterations_MAX) {
-    		  Solution A_old = A;
-    		  
-    		  List<Solution> N = chooseNeighbours(A_old,cars);
-    		  A =  localChoice(N,A_old, probability);
-    		  System.out.println(A.companyCost);
-    		  iterations++;
+    		long time_start = System.currentTimeMillis();
+    		if(A !=null) {	
+	    		while(iterations  <  iterations_MAX && (((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan)) {
+	    		  Solution A_old = A;
+	
+	    		  List<Solution > neigh = chooseNeighbours(A_old,cars);	  
+	    		  List<Solution> N = neigh;
+	    		  
+	    		  A =  localChoice(N,A_old, probability );
+	    		  //we have to retain the best solution
+	    		  if(A.companyCost < bestSolution.companyCost) {
+	    			  bestSolution = A;
+	    		  }else {
+	    			  sameConvergence ++;	  
+	    		  }
+
+	    		  iterations++;
+	    		}
+	    		
+	    		return bestSolution; 
+    		}else {
+    			JOptionPane.showMessageDialog(null, " Impossible plan, constraints not satisfied. Perhaps not enough space");
+    			
+    			return null;
     		}
-    		
-    		return A;  	
+    		 	
     }
       
-    private List<Solution> chooseNeighbours(Solution a_old, List<VehicleObject> cars) {
+    private List<Solution> filterVisitedNeighboursSolution(List<Solution> chooseNeighbours) {
+		
+		List<Solution> filteredNeighbors = new ArrayList<Solution>();
+		
+		for(Solution solution : chooseNeighbours) {
+		
+			if(!s.contains(solution)) {
+				filteredNeighbors.add(solution);
+			}
+		}
+    	 
+		return filteredNeighbors;	
+	}
+
+	private List<Solution> chooseNeighbours(Solution a_old, List<VehicleObject> cars) {
 
     		List<Solution> N = new ArrayList<Solution>();
     		Random random = new Random();
@@ -194,7 +215,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     			}
     		}
     		
-    		//---------Applying the changing task order operator------//
+    		//---------Applying the changing task order operator----------on a task //
     	    int length = a_old.assignments.get(randomCar).size();
     	    
     	    Map<Integer, List<TaskObject>> map = buildHashMapForVi(a_old.assignments.get(randomCar));
@@ -398,35 +419,91 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	}
 
     //TODO
-    private Solution localChoice(List<Solution> n,Solution a_old, double probablity ) {
+    private Solution localChoice(List<Solution> neighbors,Solution a_old, double probablity ) {
     		//we sort the list of solutions based on there cost
     		
-    		Collections.sort(n, new Comparator<Solution>() {
+    		Collections.sort(neighbors, new Comparator<Solution>() {
     				@Override
 				public int compare(Solution o1, Solution o2) {
 
 					return Integer.compare(o1.companyCost, o2.companyCost);
 				}
 			});
-    		int minCost = n.get(0).companyCost;
-    		List<Solution> filtered = filter(minCost,n);
     		
-    		Random random = new Random();
-    		int randomSolution = random.nextInt(filtered.size());
+    		if(neighbors.size() > 0) {
+	    		int minCost = neighbors.get(0).companyCost;
+	    		List<Solution> filtered = retainAllMinumCost(minCost,neighbors);
+	    		
+	    		Random random = new Random();
+	    		int randomSolution = random.nextInt(filtered.size());
+	    		
+	    		Solution solution = filtered.get(randomSolution);
+	    		
+	    		double proba = random.nextDouble();
     		
-    		Solution solution = filtered.get(randomSolution);
-    		
-    		double proba = random.nextDouble();
-    		
-    		if(probablity >= proba) {
+	    		/*if(probablity > proba) {
+	    			return solution;
+    			
+	    		}else if(sameConvergence == convergenceRate)  {
+	    			sameConvergence = 0;
+	    			System.out.println(" SAME CONVERGENCE ");
+	    			int r = random.nextInt(neighbors.size());	
+	    			return neighbors.get(r);
+	    			
+	    		}else {
+	    			
+	    			return a_old;
+	    			
+	    		}*/
+	    		
+	    		
+	    		
+	    		if(probablity > proba) {
     			return solution;
+			
+	    		}else if(probablity < proba && proba < 2 * probablity ) {
+    			return a_old;
+	    		
+	    		}else {
+    			int r = random.nextInt(neighbors.size());	
+    			return neighbors.get(r);
+	    		}
+    		
+    		
+	    			
+		    /*if(probablity > proba ) {
+	    			return solution;
+	    			
+	    		}else {
+	    			return a_old;
+	    		}
+	    		*/
+		     
+	    		}else {
+	    			return a_old;
+	    		}
+    		
+    }
+    		
+    	
+    			
+    		
+    	
+    	
+	    		
+    		
+    		
+    		/*if(probablity > proba && filtered.size() > 0) {
+    			return solution;
+    			
     		}else {
     			return a_old;
     		}
+    		*/
     		
-	}
+	
     
-    private List<Solution> filter(int mininumCost, List<Solution> s){
+    private List<Solution> retainAllMinumCost(int mininumCost, List<Solution> s){
     		List<Solution> filteredSolution = new ArrayList<Solution>();
     		int i = 0;
     		int minimumCost = s.get(i).companyCost;
@@ -452,7 +529,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     			cars.add(new VehicleObject(v));
     		}
     		t.addAll(ti);
-    		Collections.shuffle(t, new Random(seed));
+    		//Collections.shuffle(t, new Random(seed));
     		
     		for(Task task : t) {
     			totalTasks.add(new TaskObject(task, Action.PICKUP));
@@ -505,13 +582,15 @@ public class CentralizedTemplate implements CentralizedBehavior {
     					car++;
     				}
     				carsFull = 0;
+    				
     			}else {
     				car++;
     				carsFull++;
     				//if we don't have anymore cars
     				if(carsFull == vehicles.size()) {
     					return null;
-    				}   				
+    				}  
+    				 				
     			}
     		}
     		
