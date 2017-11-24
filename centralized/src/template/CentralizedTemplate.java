@@ -51,7 +51,8 @@ public class CentralizedTemplate implements CentralizedBehavior {
 	
 
 	
-	private Solution bestSolution;;
+	private Solution bestSolution;
+	
 	private List<Solution> s = new ArrayList<Solution>();
 	private int sameConvergence = 0;
 	private int convergenceRate = 40;
