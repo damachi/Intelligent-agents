@@ -65,6 +65,8 @@ public class AuctionTemplate implements AuctionBehavior {
 	private List<Solution> s = new ArrayList<Solution>();
 	private int sameConvergence = 0;
 	private int convergenceRate = 40;
+	
+	private int auctionNumber = 1;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,
@@ -100,11 +102,10 @@ public class AuctionTemplate implements AuctionBehavior {
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		
-		System.out.println("start auction results");
 		
-		System.out.println(" ************* Auction Results ************** ");
+		System.out.println(" ************* Auction "+auctionNumber+" Results ************** ");
 		// Print winner
-		System.out.println("Task "+ previous.id + "won by " + winner);
+		System.out.println("Task "+ previous.id + " won by " + winner);
 		// Print all the bids
 		for(int i = 0; i < bids.length; i++) {
 			System.out.println("Company "+ i + ", bid :"+bids[i]);
@@ -112,16 +113,18 @@ public class AuctionTemplate implements AuctionBehavior {
 		
 		// If we are the winner, update our plan
 		if(winner == agent.id()) {
+			System.out.println("We won");
 			tasksIWon.add(previous);
-			Task[] tiw = tasksIWon.toArray(new Task[tasksIWon.size()]);
-			mySolution = SLS(vehicles, TaskSet.create(tiw));
+			//Task[] tiw = tasksIWon.toArray(new Task[tasksIWon.size()]);
+			mySolution = SLS(vehicles, tasksIWon);
 			myBids += bids[agent.id()];
 		}
 		// If we lose, update the solution of the opponent to model it the best we can
 		else {
+			System.out.println("We lost");
 			tasksOpponentWon.add(previous);
-			Task[] tow = tasksOpponentWon.toArray(new Task[tasksOpponentWon.size()]);
-			opponentSolution = SLS(vehicles, TaskSet.create(tow));
+			//Task[] tow = tasksOpponentWon.toArray(new Task[tasksOpponentWon.size()]);
+			opponentSolution = SLS(vehicles, tasksOpponentWon);
 			
 			int opponentId = 0;
 			// Here I assume we are only two
@@ -131,12 +134,11 @@ public class AuctionTemplate implements AuctionBehavior {
 			opponentBids += bids[opponentId];
 		}
 		System.out.println(" ************* END ************** ");	
+		auctionNumber++;
 	}
 	
 	// This function will return the marginal cost given a new task
 	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution) {
-		
-		System.out.println("start compute marinal cost");
 		
 		long mCost = 0;
 		int costBefore = 0;
@@ -149,25 +151,18 @@ public class AuctionTemplate implements AuctionBehavior {
 		}
 		T.add(bidTask);
 		
-		System.out.println("test1");
 		
 		if(prevSolution != null) {
 			costBefore = prevSolution.companyCost;
 		}
+				
+		//Task[] t = T.toArray(new Task[T.size()]);
+		Solution estimate = SLS(vehicles, T);
 		
-		System.out.println("test 2");
-		
-		Task[] t = T.toArray(new Task[T.size()]);
-		System.out.println("test 3");
-		Solution estimate = SLS(vehicles, TaskSet.create(t));
-		
-		System.out.println("test 4");
-		
+				
 		int costAfter = estimate.companyCost;
 		
 		mCost = costAfter - costBefore;
-		
-		System.out.println("marginal cost computed");
 		
 		return mCost;
 		
@@ -175,13 +170,14 @@ public class AuctionTemplate implements AuctionBehavior {
 	
 	@Override
 	public Long askPrice(Task task) {
-		
-		System.out.println("start ask for price");
-		
+				
 		long myMarginalCost = 0;
 		long opponentMarginalCost = 0;
 		
+		System.out.println("start compute my marinal cost");
 		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution);
+		
+		System.out.println("start compute opponent marinal cost");
 		opponentMarginalCost = computeMarginalCost(tasksOpponentWon, task, opponentSolution);
 			
 		long myBid = myMarginalCost - myBids + 1;
@@ -308,7 +304,7 @@ public class AuctionTemplate implements AuctionBehavior {
 	 * 
 	 * **/
 
-	private Solution SLS(List<Vehicle> vehicles, TaskSet tasks){
+	private Solution SLS(List<Vehicle> vehicles, LinkedList<Task> tasks){
 		
 		// ------------------------------------------------------------------------------
 		// TODO : Check if we have to put this here:
@@ -331,6 +327,10 @@ public class AuctionTemplate implements AuctionBehavior {
 		
 		// ------------------------------------------------------------------------------
     		int iterations = 0; 
+    		
+    		timeout_plan = 30000;
+    		//System.out.println(timeout_plan/10000.0);
+    		
    
     		Solution A = selectInitialSolution(vehicles, tasks,SEED);
     		
@@ -342,7 +342,10 @@ public class AuctionTemplate implements AuctionBehavior {
     		}
     		long time_start = System.currentTimeMillis();
     		if(A !=null) {	
-	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan)) {
+	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan/10000.0)) {
+	    			
+	    			//System.out.println((System.currentTimeMillis() - time_start)/1000.0);
+	    			
 	    		  Solution A_old = A;
 	
 	    		  List<Solution > neigh = chooseNeighbours(A_old,cars);	  
@@ -358,7 +361,7 @@ public class AuctionTemplate implements AuctionBehavior {
 
 	    		  iterations++;
 	    		}
-	    		
+	    		System.out.println("done");
 	    		return bestSolution; 
     		}else {
     			JOptionPane.showMessageDialog(null, " Impossible plan, constraints not satisfied. Perhaps not enough space");
@@ -709,7 +712,7 @@ public class AuctionTemplate implements AuctionBehavior {
     	
     }
 
-    private Solution selectInitialSolution(List<Vehicle> vehicles, TaskSet ti,int seed) {
+    private Solution selectInitialSolution(List<Vehicle> vehicles, LinkedList<Task> ti,int seed) {
     		//Initialize Vehicle Object list
     		List<VehicleObject> cars = new ArrayList<VehicleObject>();
     		List<TaskObject> totalTasks = new ArrayList<TaskObject>();
