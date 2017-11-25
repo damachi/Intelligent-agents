@@ -40,6 +40,7 @@ public class AuctionTemplate implements AuctionBehavior {
 	private Random random;
 	private Vehicle vehicle;
 	private City currentCity;
+	private List<Vehicle> vehicles;
 	
 	private long timeout_setup;
     private long timeout_plan;
@@ -47,15 +48,17 @@ public class AuctionTemplate implements AuctionBehavior {
     private int iterations_MAX = 10000;
 	private double probability = 0.35;
 	
-	// Me
 	private Solution bestSolution;
-	private Solution iWin;
+	
+	// Me
+	private Solution mySolution;
+	//private Solution myEstimate;
 	private LinkedList<Task> tasksIWon;
 	private long myBids = 0;
 	
 	// Opponent
 	private Solution opponentSolution;
-	private Solution opponentWin;
+	//private Solution opponentEstimate;
 	private LinkedList<Task> tasksOpponentWon;
 	private long opponentBids = 0;
 	
@@ -86,6 +89,7 @@ public class AuctionTemplate implements AuctionBehavior {
 		this.agent = agent;
 		this.vehicle = agent.vehicles().get(0);
 		this.currentCity = vehicle.homeCity();
+		this.vehicles = agent.vehicles();
 
 		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
 		this.random = new Random(seed);
@@ -104,13 +108,15 @@ public class AuctionTemplate implements AuctionBehavior {
 		// If we are the winner, update our plan
 		if(winner == agent.id()) {
 			tasksIWon.add(previous);
-			bestSolution = iWin;
+			Task[] tiw = tasksIWon.toArray(new Task[tasksIWon.size()]);
+			mySolution = SLS(vehicles, TaskSet.create(tiw));
 			myBids += bids[agent.id()];
 		}
 		// If we lose, update the solution of the opponent to model it the best we can
 		else {
 			tasksOpponentWon.add(previous);
-			opponentSolution = opponentWin;
+			Task[] tow = tasksOpponentWon.toArray(new Task[tasksOpponentWon.size()]);
+			opponentSolution = SLS(vehicles, TaskSet.create(tow));
 			
 			int opponentId = 0;
 			// Here I assume we are only two
@@ -122,10 +128,11 @@ public class AuctionTemplate implements AuctionBehavior {
 		System.out.println(" ************* END ************** ");	
 	}
 	
-	// This function will return an initial bid
-	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, boolean didIWin) {
-		long bid = 0;
+	// This function will return the marginal cost given a new task
+	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution) {
+		
 		long mCost = 0;
+		int costBefore = 0;
 		
 		// Create a linkedList of all the tasks plus the task we have to bid for
 		LinkedList<Task> T = new LinkedList<Task>();
@@ -134,102 +141,120 @@ public class AuctionTemplate implements AuctionBehavior {
 		}
 		T.add(bidTask);
 		
-		// Find the appropriate solution if we won the auction or not
-		if(didIWin) {
-			// TODO : create the solution with the new task
-			//iWin = SLS();
-			
-			// TODO : get the marginal cost (total distance * cost per kilometer)
-			
-			// TODO : compute bid
-			// bid = mCost - myBids + 1;
-		}
-		// If we lost the auction, estimate the solution of our opponent
-		else {
-			// TODO:
-			// opponentWin = SLS();
-			// mCost = ...
-			// bid = mCost - opponentBids
+		if(prevSolution != null) {
+			costBefore = prevSolution.companyCost;
 		}
 		
-		return bid;
+		Task[] t = T.toArray(new Task[T.size()]);
+		Solution estimate = SLS(vehicles, TaskSet.create(t));
+		
+		int costAfter = estimate.companyCost;
+		
+		mCost = costAfter - costBefore;
+		
+		return mCost;
 	}
 	
 	@Override
 	public Long askPrice(Task task) {
 		
-		// TODO: define the didIWin boolean, maybe in the auction result
-		long bid = computeMarginalCost(tasksIWon, task, didIWin);
+		long myMarginalCost = 0;
+		long opponentMarginalCost = 0;
+		
+		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution);
+		opponentMarginalCost = computeMarginalCost(tasksOpponentWon, task, opponentSolution);
+			
+		long myBid = myMarginalCost - myBids + 1;
+		long opponentBid = opponentMarginalCost - opponentBids;
 		
 		// Here we have our bidding strategy
 		switch(tasksIWon.size()) {
 		
 		// We won zero task => we discount our service
 		case 0:
-			bid *= 0.8;
+			myBid *= 0.8;
 			break;
 		// We won only one task, we also discount our service but a bit less
 		case 1:
-			bid *= 0.9;
+			myBid *= 0.9;
 			break;
 		
 		// We won 2 tasks, we play it safe, and just do our bid - 1
 		case 2:
-			bid --;
+			myBid --;
 			break;
 			
 		default:
-			// If we have an estimation of the opponent strategy:
-			if(opponentSolution != null) {
-				// TODO: estimationBid = costOfTheCompany - opponentBids;
-				long estimationBid = 0;
-				
-				// Now, if our opponent has a higher bid, we can increase our bid, but we stay careful
-				// and increase our bid by the mean of the two bid
-				if (estimationBid > bid) {
-					bid = (estimationBid + bid) / 2;
+			
+			if(tasksOpponentWon.size() > 0) {
+				if(opponentBid > myBid) {
+					myBid = (opponentBid + myBid) / 2;
 				}
-				// else, our bid is too big and we lower it by 1
 				else {
-					bid--;
+					myBid--;
 				}
-			}
-			// otherwise, if our opponent hasn't any solution, we can easily increase our bid
-			// Increase by 110% but we can change it
-			else {
-				bid *= 1.1;
+				
+			} else {
+				myBid *= 1.1;
 			}
 		}
-
-		/*if (vehicle.capacity() < task.weight)
-			return null;
-
-		long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
-		long distanceSum = distanceTask
-				+ currentCity.distanceUnitsTo(task.pickupCity);
-		double marginalCost = Measures.unitsToKM(distanceSum
-				* vehicle.costPerKm());
-
-		double ratio = 1.0 + (random.nextDouble() * 0.05 * task.id);
-		double bid = ratio * marginalCost;
-
-		return (long) Math.round(bid);*/
+		
+		return myBid;
+			
 	}
 
-	// TODO : change the creation of the plan !!!
 	@Override
-	public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
+    public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
+    	
+    		//Solution solution = SLS(vehicles, tasks);
+		Solution solution = mySolution;
+
+    		if(solution != null) {
+    			List<Plan> plan = new ArrayList<Plan>();
+    			
+    			for(int i = 0; i<  vehicles.size() ;i++) {
+    				Plan builtPlan = buildPlan(solution.assignments.get(i),vehicles.get(i));
+    				plan.add(builtPlan);
+    			}
+    		
+
+	    		
+	    		System.out.println("Cost of Generated plan " +solution.companyCost);
+    		
+	    		return plan;
+    		}else {
+    			return null;
+    		}
+    }
+    
+     
+    private Plan buildPlan(LinkedList<TaskObject> linkedList, Vehicle vehicle) {
+		// TODO Auto-generated method stub
 		
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-
-		Plan planVehicle1 = naivePlan(vehicle, tasks);
-
-		List<Plan> plans = new ArrayList<Plan>();
-		plans.add(planVehicle1);
-		while (plans.size() < vehicles.size())
-			plans.add(Plan.EMPTY);
-
-		return plans;
+    		City currentCity = vehicle.getCurrentCity();
+    		Plan plan = new Plan(currentCity);
+    		
+    		for(int i = 0; i< linkedList.size();i++) {
+    			if(linkedList.get(i).action == Action.PICKUP) {
+    				//we first move to the pickup city
+    				for(City city :currentCity.pathTo(linkedList.get(i).city)) {
+    					plan.appendMove(city);
+    				}
+    				plan.appendPickup(linkedList.get(i).task);
+    				currentCity = linkedList.get(i).city;
+    				
+    			}else {
+    				//we move to the delivery city
+    				for(City city :currentCity.pathTo(linkedList.get(i).city)) {
+    					plan.appendMove(city);
+    				}
+    				plan.appendDelivery(linkedList.get(i).task);
+    				currentCity = linkedList.get(i).city;
+    					
+    			}
+    		}
+    		
+    		return plan;
 	}
 
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
@@ -262,35 +287,6 @@ public class AuctionTemplate implements AuctionBehavior {
 	 * In fact, we use the centralized plan builder to create a plan for this Auction project
 	 * 
 	 * **/
-	
-	private Plan buildPlan(LinkedList<TaskObject> linkedList, Vehicle vehicle) {
-		// TODO Auto-generated method stub
-		
-    		City currentCity = vehicle.getCurrentCity();
-    		Plan plan = new Plan(currentCity);
-    		
-    		for(int i = 0; i< linkedList.size();i++) {
-    			if(linkedList.get(i).action == Action.PICKUP) {
-    				//we first move to the pickup city
-    				for(City city :currentCity.pathTo(linkedList.get(i).city)) {
-    					plan.appendMove(city);
-    				}
-    				plan.appendPickup(linkedList.get(i).task);
-    				currentCity = linkedList.get(i).city;
-    				
-    			}else {
-    				//we move to the delivery city
-    				for(City city :currentCity.pathTo(linkedList.get(i).city)) {
-    					plan.appendMove(city);
-    				}
-    				plan.appendDelivery(linkedList.get(i).task);
-    				currentCity = linkedList.get(i).city;
-    					
-    			}
-    		}
-    		
-    		return plan;
-	}
 
 	private Solution SLS(List<Vehicle> vehicles, TaskSet tasks){
 		
@@ -326,7 +322,7 @@ public class AuctionTemplate implements AuctionBehavior {
     		}
     		long time_start = System.currentTimeMillis();
     		if(A !=null) {	
-	    		while(iterations  <  iterations_MAX && (((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan)) {
+	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan)) {
 	    		  Solution A_old = A;
 	
 	    		  List<Solution > neigh = chooseNeighbours(A_old,cars);	  
