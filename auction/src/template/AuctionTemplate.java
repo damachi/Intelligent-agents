@@ -53,13 +53,13 @@ public class AuctionTemplate implements AuctionBehavior {
 	// Me
 	private Solution mySolution;
 	//private Solution myEstimate;
-	private LinkedList<Task> tasksIWon;
+	private LinkedList<Task> tasksIWon = new LinkedList<Task>();
 	private long myBids = 0;
 	
 	// Opponent
 	private Solution opponentSolution;
 	//private Solution opponentEstimate;
-	private LinkedList<Task> tasksOpponentWon;
+	private LinkedList<Task> tasksOpponentWon = new LinkedList<Task>();
 	private long opponentBids = 0;
 	
 	private List<Solution> s = new ArrayList<Solution>();
@@ -73,7 +73,7 @@ public class AuctionTemplate implements AuctionBehavior {
 		// this code is used to get the timeouts
         LogistSettings ls = null;
         try {
-            ls = Parsers.parseSettings("config/settings_default.xml");
+            ls = Parsers.parseSettings("config/settings_auction.xml");
         }
         catch (Exception exc) {
             System.out.println("There was a problem loading the configuration file.");
@@ -93,10 +93,15 @@ public class AuctionTemplate implements AuctionBehavior {
 
 		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
 		this.random = new Random(seed);
+		
+		System.out.println("setting ok");
 	}
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
+		
+		System.out.println("start auction results");
+		
 		System.out.println(" ************* Auction Results ************** ");
 		// Print winner
 		System.out.println("Task "+ previous.id + "won by " + winner);
@@ -131,8 +136,11 @@ public class AuctionTemplate implements AuctionBehavior {
 	// This function will return the marginal cost given a new task
 	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution) {
 		
+		System.out.println("start compute marinal cost");
+		
 		long mCost = 0;
 		int costBefore = 0;
+		
 		
 		// Create a linkedList of all the tasks plus the task we have to bid for
 		LinkedList<Task> T = new LinkedList<Task>();
@@ -141,22 +149,34 @@ public class AuctionTemplate implements AuctionBehavior {
 		}
 		T.add(bidTask);
 		
+		System.out.println("test1");
+		
 		if(prevSolution != null) {
 			costBefore = prevSolution.companyCost;
 		}
 		
+		System.out.println("test 2");
+		
 		Task[] t = T.toArray(new Task[T.size()]);
+		System.out.println("test 3");
 		Solution estimate = SLS(vehicles, TaskSet.create(t));
+		
+		System.out.println("test 4");
 		
 		int costAfter = estimate.companyCost;
 		
 		mCost = costAfter - costBefore;
 		
+		System.out.println("marginal cost computed");
+		
 		return mCost;
+		
 	}
 	
 	@Override
 	public Long askPrice(Task task) {
+		
+		System.out.println("start ask for price");
 		
 		long myMarginalCost = 0;
 		long opponentMarginalCost = 0;
