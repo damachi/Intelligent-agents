@@ -44,6 +44,7 @@ public class AuctionTemplate implements AuctionBehavior {
 	
 	private long timeout_setup;
     private long timeout_plan;
+    private long timeout_bid;
 	private int SEED = 0;
     private int iterations_MAX = 10000;
 	private double probability = 0.35;
@@ -85,6 +86,7 @@ public class AuctionTemplate implements AuctionBehavior {
         timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
         // the plan method cannot execute more than timeout_plan milliseconds
         timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
+        timeout_bid = ls.get(LogistSettings.TimeoutKey.BID);
 
 		this.topology = topology;
 		this.distribution = distribution;
@@ -176,23 +178,25 @@ public class AuctionTemplate implements AuctionBehavior {
 		
 		System.out.println("start compute my marinal cost");
 		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution);
+		System.out.println(myMarginalCost);
 		
 		System.out.println("start compute opponent marinal cost");
 		opponentMarginalCost = computeMarginalCost(tasksOpponentWon, task, opponentSolution);
+		System.out.println(opponentMarginalCost);
 			
-		long myBid = myMarginalCost - myBids + 1;
-		long opponentBid = opponentMarginalCost - opponentBids;
+		long myBid = myMarginalCost + 1;
+		long opponentBid = opponentMarginalCost + 1;
 		
 		// Here we have our bidding strategy
 		switch(tasksIWon.size()) {
 		
 		// We won zero task => we discount our service
 		case 0:
-			myBid *= 0.8;
+			myBid *= 0.9;
 			break;
 		// We won only one task, we also discount our service but a bit less
 		case 1:
-			myBid *= 0.9;
+			myBid *= 0.95;
 			break;
 		
 		// We won 2 tasks, we play it safe, and just do our bid - 1
