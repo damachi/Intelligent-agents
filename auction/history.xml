@@ -2,10 +2,6 @@
 
 <history configuration="config/auction.xml">
 	<agents>
-		<agent name="auction-random">
+		<agent name="auction-main-08">
 			<vehicle name="Vehicle 1"/>
 			<vehicle name="Vehicle 2"/>
-		</agent>
-		<agent name="auction-naive">
-			<vehicle name="Vehicle 3"/>
-			<vehicle name="Vehicle 4"/>

@@ -32,7 +32,7 @@ import logist.topology.Topology.City;
  * 
  */
 @SuppressWarnings("unused")
-public class AuctionNaive implements AuctionBehavior {
+public class AuctionCost implements AuctionBehavior {
 
 	private Topology topology;
 	private TaskDistribution distribution;
@@ -104,29 +104,19 @@ public class AuctionNaive implements AuctionBehavior {
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		
-		
-		System.out.println(" ************* Auction "+auctionNumber+" Results ************** ");
-		// Print winner
-		System.out.println("Task "+ previous.id + " won by " + winner);
-		// Print all the bids
-		for(int i = 0; i < bids.length; i++) {
-			System.out.println("Company "+ i + ", bid :"+bids[i]);
-		}
-		
 		// If we are the winner, update our plan
 		if(winner == agent.id()) {
-			System.out.println("We won");
 			tasksIWon.add(previous);
 			//Task[] tiw = tasksIWon.toArray(new Task[tasksIWon.size()]);
-			mySolution = SLS(vehicles, tasksIWon);
+			mySolution = SLS(vehicles, tasksIWon, true, true);
 			myBids += bids[agent.id()];
+			long reward = myBids - mySolution.companyCost;
 		}
 		// If we lose, update the solution of the opponent to model it the best we can
 		else {
-			System.out.println("We lost");
 			tasksOpponentWon.add(previous);
 			//Task[] tow = tasksOpponentWon.toArray(new Task[tasksOpponentWon.size()]);
-			opponentSolution = SLS(vehicles, tasksOpponentWon);
+			opponentSolution = SLS(vehicles, tasksOpponentWon, false, true);
 			
 			int opponentId = 0;
 			// Here I assume we are only two
@@ -135,12 +125,17 @@ public class AuctionNaive implements AuctionBehavior {
 			}
 			opponentBids += bids[opponentId];
 		}
-		System.out.println(" ************* END ************** ");	
+		
+		if(mySolution != null) {
+			long reward = myBids - mySolution.companyCost;
+			System.out.println("Cost agent Reward :"+reward);
+		}
+		
 		auctionNumber++;
 	}
 	
 	// This function will return the marginal cost given a new task
-	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution) {
+	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution, boolean me) {
 		
 		long mCost = 0;
 		int costBefore = 0;
@@ -159,7 +154,7 @@ public class AuctionNaive implements AuctionBehavior {
 		}
 				
 		//Task[] t = T.toArray(new Task[T.size()]);
-		Solution estimate = SLS(vehicles, T);
+		Solution estimate = SLS(vehicles, T, me, true);
 		
 				
 		int costAfter = estimate.companyCost;
@@ -176,48 +171,11 @@ public class AuctionNaive implements AuctionBehavior {
 		long myMarginalCost = 0;
 		long opponentMarginalCost = 0;
 		
-		System.out.println("start compute my marinal cost");
-		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution);
-		System.out.println(myMarginalCost);
-		
-		System.out.println("start compute opponent marinal cost");
-		opponentMarginalCost = computeMarginalCost(tasksOpponentWon, task, opponentSolution);
-		System.out.println(opponentMarginalCost);
+		//System.out.println("start compute my marginal cost");
+		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution, true);
+		//System.out.println(myMarginalCost);
 			
-		long myBid = myMarginalCost + 1;
-		long opponentBid = opponentMarginalCost + 1;
-		
-		/*// Here we have our bidding strategy
-		switch(tasksIWon.size()) {
-		
-		// We won zero task => we discount our service
-		case 0:
-			myBid *= 0.9;
-			break;
-		// We won only one task, we also discount our service but a bit less
-		case 1:
-			myBid *= 0.95;
-			break;
-		
-		// We won 2 tasks, we play it safe, and just do our bid - 1
-		case 2:
-			myBid --;
-			break;
-			
-		default:
-			
-			if(tasksOpponentWon.size() > 0) {
-				if(opponentBid > myBid) {
-					myBid = (opponentBid + myBid) / 2;
-				}
-				else {
-					myBid--;
-				}
-				
-			} else {
-				myBid *= 1.1;
-			}
-		}*/
+		long myBid = myMarginalCost;
 		
 		return myBid;
 			
@@ -308,7 +266,7 @@ public class AuctionNaive implements AuctionBehavior {
 	 * 
 	 * **/
 
-	private Solution SLS(List<Vehicle> vehicles, LinkedList<Task> tasks){
+	private Solution SLS(List<Vehicle> vehicles, LinkedList<Task> tasks, boolean me, boolean bid){
 		
 		// ------------------------------------------------------------------------------
 		// TODO : Check if we have to put this here:
@@ -332,10 +290,20 @@ public class AuctionNaive implements AuctionBehavior {
 		// ------------------------------------------------------------------------------
     		int iterations = 0; 
     		
-    		timeout_plan = 30000;
-    		//System.out.println(timeout_plan/10000.0);
+    		// Make sure we respect the timeout
+    		long timeout = 0;
     		
-   
+    		if(bid) {
+    			timeout = timeout_bid;
+    			
+    			if(me) timeout = (long) (2.0/3.0 * timeout - 1);
+        		else timeout = (long) (1.0/3.0 * timeout - 1);
+    			
+    			
+    		}else {
+    			timeout = timeout_plan;
+    		}
+    		
     		Solution A = selectInitialSolution(vehicles, tasks,SEED);
     		
     		bestSolution = A;
@@ -346,7 +314,7 @@ public class AuctionNaive implements AuctionBehavior {
     		}
     		long time_start = System.currentTimeMillis();
     		if(A !=null) {	
-	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan/10000.0)) {
+	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout/10000.0)) {
 	    			
 	    			//System.out.println((System.currentTimeMillis() - time_start)/1000.0);
 	    			
@@ -365,7 +333,6 @@ public class AuctionNaive implements AuctionBehavior {
 
 	    		  iterations++;
 	    		}
-	    		System.out.println("done");
 	    		return bestSolution; 
     		}else {
     			JOptionPane.showMessageDialog(null, " Impossible plan, constraints not satisfied. Perhaps not enough space");

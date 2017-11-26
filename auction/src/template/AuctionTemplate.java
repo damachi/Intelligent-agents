@@ -68,6 +68,8 @@ public class AuctionTemplate implements AuctionBehavior {
 	private int convergenceRate = 40;
 	
 	private int auctionNumber = 1;
+	private int win = 0;
+	private int lose = 0;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,
@@ -104,7 +106,8 @@ public class AuctionTemplate implements AuctionBehavior {
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		
-		
+		System.out.println();
+
 		System.out.println(" ************* Auction "+auctionNumber+" Results ************** ");
 		// Print winner
 		System.out.println("Task "+ previous.id + " won by " + winner);
@@ -118,15 +121,16 @@ public class AuctionTemplate implements AuctionBehavior {
 			System.out.println("We won");
 			tasksIWon.add(previous);
 			//Task[] tiw = tasksIWon.toArray(new Task[tasksIWon.size()]);
-			mySolution = SLS(vehicles, tasksIWon);
+			mySolution = SLS(vehicles, tasksIWon, true, true);
 			myBids += bids[agent.id()];
+			win ++;
 		}
 		// If we lose, update the solution of the opponent to model it the best we can
 		else {
 			System.out.println("We lost");
 			tasksOpponentWon.add(previous);
 			//Task[] tow = tasksOpponentWon.toArray(new Task[tasksOpponentWon.size()]);
-			opponentSolution = SLS(vehicles, tasksOpponentWon);
+			opponentSolution = SLS(vehicles, tasksOpponentWon, false, true);
 			
 			int opponentId = 0;
 			// Here I assume we are only two
@@ -134,13 +138,24 @@ public class AuctionTemplate implements AuctionBehavior {
 				opponentId = 1;
 			}
 			opponentBids += bids[opponentId];
+			lose ++;
 		}
-		System.out.println(" ************* END ************** ");	
+		System.out.println(" ************* END ************** ");
+		System.out.println();
+		
+		if(mySolution != null) {
+			long reward = myBids - mySolution.companyCost;
+			System.out.println("My Reward :"+reward);
+		}
+		System.out.println("win: "+win+" auction");
+		System.out.println("Lose: "+lose+" auction");
+		
+		
 		auctionNumber++;
 	}
 	
 	// This function will return the marginal cost given a new task
-	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution) {
+	private long computeMarginalCost(LinkedList<Task> wonTasks, Task bidTask, Solution prevSolution, boolean me) {
 		
 		long mCost = 0;
 		int costBefore = 0;
@@ -159,7 +174,7 @@ public class AuctionTemplate implements AuctionBehavior {
 		}
 				
 		//Task[] t = T.toArray(new Task[T.size()]);
-		Solution estimate = SLS(vehicles, T);
+		Solution estimate = SLS(vehicles, T, me, true);
 		
 				
 		int costAfter = estimate.companyCost;
@@ -176,32 +191,38 @@ public class AuctionTemplate implements AuctionBehavior {
 		long myMarginalCost = 0;
 		long opponentMarginalCost = 0;
 		
-		System.out.println("start compute my marinal cost");
-		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution);
-		System.out.println(myMarginalCost);
+		//System.out.println("start compute my marginal cost");
+		myMarginalCost = computeMarginalCost(tasksIWon, task, mySolution, true);
+		//System.out.println(myMarginalCost);
 		
-		System.out.println("start compute opponent marinal cost");
-		opponentMarginalCost = computeMarginalCost(tasksOpponentWon, task, opponentSolution);
-		System.out.println(opponentMarginalCost);
+		//System.out.println("start compute opponent marginal cost");
+		opponentMarginalCost = computeMarginalCost(tasksOpponentWon, task, opponentSolution, false);
+		//System.out.println(opponentMarginalCost);
 			
-		long myBid = myMarginalCost + 1;
-		long opponentBid = opponentMarginalCost + 1;
+		long myBid = myMarginalCost ;
+		long opponentBid = opponentMarginalCost;
 		
 		// Here we have our bidding strategy
 		switch(tasksIWon.size()) {
 		
-		// We won zero task => we discount our service
+		// We won zero task => we bid a really small amount
 		case 0:
-			myBid *= 0.9;
+			myBid *= 1.01;
 			break;
-		// We won only one task, we also discount our service but a bit less
+		// We won only one task, we also bid a small amount but a bit more
 		case 1:
-			myBid *= 0.95;
+			if(myBid == 0) {
+				myBid = (long) (opponentBid / 2.0);
+			}
+			myBid *= 1.02;
 			break;
 		
-		// We won 2 tasks, we play it safe, and just do our bid - 1
+		// We won 2 tasks, we still play it safe and increase by a small amount
 		case 2:
-			myBid --;
+			if(myBid == 0) {
+				myBid = (long) (opponentBid / 2.0);
+			}
+			myBid *= 1.05;
 			break;
 			
 		default:
@@ -210,13 +231,18 @@ public class AuctionTemplate implements AuctionBehavior {
 				if(opponentBid > myBid) {
 					myBid = (opponentBid + myBid) / 2;
 				}
-				else {
-					myBid--;
-				}
 				
 			} else {
-				myBid *= 1.1;
+				if(myBid == 0) {
+					myBid = (long) (opponentBid/2.0);
+				} else {
+					myBid *= 1.2;
+				}
 			}
+		}
+		
+		if(myBid < 0) {
+			myBid = (long) (opponentBid / 2.0);
 		}
 		
 		return myBid;
@@ -308,7 +334,7 @@ public class AuctionTemplate implements AuctionBehavior {
 	 * 
 	 * **/
 
-	private Solution SLS(List<Vehicle> vehicles, LinkedList<Task> tasks){
+	private Solution SLS(List<Vehicle> vehicles, LinkedList<Task> tasks, boolean me, boolean bid){
 		
 		// ------------------------------------------------------------------------------
 		// TODO : Check if we have to put this here:
@@ -332,10 +358,20 @@ public class AuctionTemplate implements AuctionBehavior {
 		// ------------------------------------------------------------------------------
     		int iterations = 0; 
     		
-    		timeout_plan = 30000;
-    		//System.out.println(timeout_plan/10000.0);
+    		// Make sure we respect the timeout
+    		long timeout = 0;
     		
-   
+    		if(bid) {
+    			timeout = timeout_bid;
+    			
+    			if(me) timeout = (long) (2.0/3.0 * timeout - 1);
+        		else timeout = (long) (1.0/3.0 * timeout - 1);
+    			
+    			
+    		}else {
+    			timeout = timeout_plan;
+    		}
+    		    		
     		Solution A = selectInitialSolution(vehicles, tasks,SEED);
     		
     		bestSolution = A;
@@ -346,7 +382,7 @@ public class AuctionTemplate implements AuctionBehavior {
     		}
     		long time_start = System.currentTimeMillis();
     		if(A !=null) {	
-	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout_plan/10000.0)) {
+	    		while((((System.currentTimeMillis() - time_start)/1000.0) < timeout/10000.0)) {
 	    			
 	    			//System.out.println((System.currentTimeMillis() - time_start)/1000.0);
 	    			
@@ -365,7 +401,6 @@ public class AuctionTemplate implements AuctionBehavior {
 
 	    		  iterations++;
 	    		}
-	    		System.out.println("done");
 	    		return bestSolution; 
     		}else {
     			JOptionPane.showMessageDialog(null, " Impossible plan, constraints not satisfied. Perhaps not enough space");
